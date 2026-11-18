@@ -1,0 +1,15 @@
+# Architecture Decision Records (ADR)
+
+Cada decisión técnica relevante se registra aquí. Formato: contexto → decisión → consecuencias.
+Una decisión **no se borra**: si cambia, se crea un ADR nuevo que la reemplaza y se marca el anterior como `Reemplazado`.
+
+| # | Título | Estado |
+|---|---|---|
+| [001](001-frontend-astro-portal-admin-spa.md) | Frontend: Astro para el portal, SPA Vue para el panel | Aceptado |
+| [002](002-worker-como-entrypoint.md) | Worker como segundo entrypoint de `apps/api` | Aceptado |
+| [003](003-prisma-y-sql-crudo.md) | Prisma para CRUD, SQL crudo para el motor de reservas | Aceptado |
+| [004](004-multitenancy-rls.md) | Multi-tenancy: tenant_id + FK compuestas + RLS forzado | Aceptado |
+| [005](005-outbox-transaccional.md) | Notificaciones mediante transactional outbox | Aceptado |
+| [006](006-capacidad-mayor-a-uno-diferida.md) | Capacidad de recurso > 1 diferida | Aceptado |
+| [007](007-supuestos-de-negocio-mvp.md) | Supuestos de negocio por defecto del MVP | Aceptado |
+| [008](008-hosting-local-primero.md) | Hosting: desarrollo local en Docker; producción pendiente | Aceptado (parcial) |

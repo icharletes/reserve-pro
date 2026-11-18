@@ -1,0 +1,23 @@
+{
+  "name": "@reservepro/booking-domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lógica de reservas PURA: slots, máquina de estados, políticas. Sin Nest, sin Prisma, sin I/O.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.1"
+  }
+}

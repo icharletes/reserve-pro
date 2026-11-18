@@ -1,0 +1,207 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated"
+  moduleFormat    = "esm"
+  importFileExtension = "js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model audit_logs {
+  id          String   @db.Uuid
+  tenant_id   String?  @db.Uuid
+  actor_type  String
+  actor_id    String?  @db.Uuid
+  action      String
+  entity_type String
+  entity_id   String?  @db.Uuid
+  before      Json?
+  after       Json?
+  request_id  String?
+  ip          String?  @db.Inet
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([id, created_at])
+  @@index([tenant_id, entity_type, entity_id], map: "ix_audit_tenant_entity")
+  @@index([tenant_id, created_at(sort: Desc)], map: "ix_audit_tenant_time")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model invitations {
+  id                 String             @id @db.Uuid
+  tenant_id          String             @db.Uuid
+  email              String             @db.Citext
+  role_id            String             @db.Uuid
+  token_hash         Bytes              @unique
+  expires_at         DateTime           @db.Timestamptz(6)
+  accepted_at        DateTime?          @db.Timestamptz(6)
+  invited_by         String             @db.Uuid
+  created_at         DateTime           @default(now()) @db.Timestamptz(6)
+  tenants            tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant_memberships tenant_memberships @relation(fields: [tenant_id, invited_by], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  roles              roles              @relation(fields: [tenant_id, role_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, id])
+  @@unique([tenant_id, email], map: "uq_invitations_pending", where: raw("(accepted_at IS NULL)"))
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model membership_roles {
+  tenant_id          String             @db.Uuid
+  membership_id      String             @db.Uuid
+  role_id            String             @db.Uuid
+  tenant_memberships tenant_memberships @relation(fields: [tenant_id, membership_id], references: [tenant_id, id], onDelete: Cascade, onUpdate: NoAction)
+  roles              roles              @relation(fields: [tenant_id, role_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([membership_id, role_id])
+}
+
+model password_reset_tokens {
+  id         String    @id @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash Bytes     @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model permissions {
+  key              String             @id
+  description      String
+  role_permissions role_permissions[]
+}
+
+model refresh_tokens {
+  id               String    @id @db.Uuid
+  user_id          String    @db.Uuid
+  family_id        String    @db.Uuid
+  token_hash       Bytes     @unique
+  active_tenant_id String?   @db.Uuid
+  expires_at       DateTime  @db.Timestamptz(6)
+  revoked_at       DateTime? @db.Timestamptz(6)
+  replaced_by      String?   @db.Uuid
+  ip               String?   @db.Inet
+  user_agent       String?
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  tenants          tenants?  @relation(fields: [active_tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users            users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([family_id], map: "ix_refresh_tokens_family")
+  @@index([user_id], map: "ix_refresh_tokens_user_active", where: raw("(revoked_at IS NULL)"))
+}
+
+model reserved_slugs {
+  slug String @id @db.Citext
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model role_permissions {
+  tenant_id      String      @db.Uuid
+  role_id        String      @db.Uuid
+  permission_key String
+  permissions    permissions @relation(fields: [permission_key], references: [key], onDelete: NoAction, onUpdate: NoAction)
+  roles          roles       @relation(fields: [tenant_id, role_id], references: [tenant_id, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([role_id, permission_key])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model roles {
+  id               String             @id @db.Uuid
+  tenant_id        String             @db.Uuid
+  key              String
+  name             String
+  is_system        Boolean            @default(false)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  invitations      invitations[]
+  membership_roles membership_roles[]
+  role_permissions role_permissions[]
+  tenants          tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, id])
+  @@unique([tenant_id, key])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tenant_memberships {
+  id               String             @id @db.Uuid
+  tenant_id        String             @db.Uuid
+  user_id          String             @db.Uuid
+  status           String             @default("active")
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
+  invitations      invitations[]
+  membership_roles membership_roles[]
+  tenants          tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users            users              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, id])
+  @@unique([tenant_id, user_id])
+  @@index([user_id], map: "ix_memberships_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tenant_settings {
+  tenant_id                  String   @id @db.Uuid
+  booking_min_notice_minutes Int      @default(60)
+  booking_max_advance_days   Int      @default(90)
+  slot_step_minutes          Int      @default(15)
+  auto_confirm               Boolean  @default(true)
+  pending_hold_minutes       Int      @default(30)
+  cancel_window_hours        Int      @default(24)
+  cancel_requires_approval   Boolean  @default(false)
+  reschedule_window_hours    Int      @default(24)
+  max_reschedules            Int      @default(2)
+  self_service_actions       Json     @default("{\"cancel\": true, \"confirm\": true, \"details\": true, \"reschedule\": true}")
+  branding                   Json     @default("{}")
+  updated_at                 DateTime @default(now()) @db.Timestamptz(6)
+  tenants                    tenants  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tenants {
+  id                 String               @id @db.Uuid
+  name               String               @db.VarChar(150)
+  legal_name         String?              @db.VarChar(200)
+  tax_id             String?              @db.VarChar(30)
+  slug               String               @unique @db.Citext
+  status             String               @default("active")
+  timezone           String               @default("America/Santiago") @db.VarChar(60)
+  currency           String               @default("CLP") @db.Char(3)
+  plan_id            String?              @db.Uuid
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  invitations        invitations[]
+  refresh_tokens     refresh_tokens[]
+  roles              roles[]
+  tenant_memberships tenant_memberships[]
+  tenant_settings    tenant_settings?
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model users {
+  id                    String                  @id @db.Uuid
+  email                 String                  @unique @db.Citext
+  password_hash         String
+  full_name             String                  @db.VarChar(150)
+  status                String                  @default("active")
+  is_platform_admin     Boolean                 @default(false)
+  email_verified_at     DateTime?               @db.Timestamptz(6)
+  failed_logins         Int                     @default(0)
+  locked_until          DateTime?               @db.Timestamptz(6)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  password_reset_tokens password_reset_tokens[]
+  refresh_tokens        refresh_tokens[]
+  tenant_memberships    tenant_memberships[]
+}

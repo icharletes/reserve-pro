@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.turbo/
+.astro/
+coverage/
+*.log
+.DS_Store
+
+# Entorno: nunca versionar secretos
+.env
+.env.*
+!.env.example
+
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Cliente Prisma generado (se regenera con `pnpm generate`)
+packages/database/src/generated/
