@@ -4,12 +4,14 @@ import { ClsModule } from 'nestjs-cls';
 import type { Request } from 'express';
 import { ProblemFilter } from './common/problem.filter.js';
 import { ConfigModule } from './config/app-config.js';
+import { MembersModule } from './modules/members/members.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { TenantsModule } from './modules/tenants/tenants.module.js';
 import { AuditModule } from './platform/audit/audit.module.js';
 import { AuthGuard, PermissionsGuard } from './platform/auth/auth.guard.js';
 import { AuthModule } from './platform/auth/auth.module.js';
 import { DatabaseModule } from './platform/database/database.module.js';
+import { EmailModule } from './platform/email/email.module.js';
 import { LoggingModule } from './platform/logging/logger.js';
 import { RbacModule } from './platform/rbac/rbac.module.js';
 
@@ -33,8 +35,10 @@ import { RbacModule } from './platform/rbac/rbac.module.js';
     DatabaseModule,
     RbacModule,
     AuditModule,
+    EmailModule,
     AuthModule,
     TenantsModule,
+    MembersModule,
     HealthModule,
   ],
   providers: [

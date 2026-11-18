@@ -35,7 +35,8 @@ Fase 0 cerrada (ADRs). Fase 1 en curso:
 - ✔ `packages/database`: migración 0001 (SaaS, acceso, RBAC, auditoría, RLS), `withTenant`/`withUser`, 23 tests de aislamiento.
 - ✔ `apps/api` (NestJS 12): config validada, errores Problem+JSON, auth (register/login/refresh con rotación/logout/switch-tenant/me), RBAC fail-closed con 38 permisos y 5 roles, auditoría transaccional, tenants (GET/PATCH current), health. 60 tests e2e + unitarios.
 - ✔ Migración 0002: políticas "propias" solo sin tenant activo (bug de aislamiento hallado por el e2e).
-- ☐ Pendiente Fase 1: invitaciones y miembros, recuperación de contraseña, consulta de auditoría, rate limiting (Redis), OpenAPI, entrypoint `worker.ts`, esqueletos `apps/web` y `apps/admin`, CI (GitHub Actions) y lint (ESLint + boundaries).
+- ✔ Invitaciones (crear/listar/reenviar/revocar, preview y aceptar con token en el cuerpo) y miembros (listar paginado, cambiar estado y roles, roles de la empresa) con anti-escalada y protección del último propietario (ADR-010). Email por SMTP/Mailpit tras el puerto `EmailProvider`. 163 tests en total.
+- ☐ Pendiente Fase 1: recuperación de contraseña, consulta de auditoría, rate limiting (Redis), verificación de email del propietario (anti-abuso de invitaciones), OpenAPI, entrypoint `worker.ts`, esqueletos `apps/web` y `apps/admin`, CI (GitHub Actions) y lint (ESLint + boundaries).
 
 ## Reglas de código de la API
 - Todo endpoint declara `@Public()`, `@Authenticated()` o `@RequirePermissions()`; sin eso no se ejecuta.
@@ -43,3 +44,6 @@ Fase 0 cerrada (ADRs). Fase 1 en curso:
 - Auditoría con `AuditService.record(tx, …)` dentro de la MISMA transacción del cambio.
 - Imports con extensión `.js` (ESM). Tests e2e: `apps/api/test/`, base propia `reservepro_api_test`.
 - Build: `turbo` ejecuta `generate` (Prisma) antes de `build`/`typecheck`/`test`.
+- Anti-escalada: para otorgar un rol o gestionar un miembro usar `canHold(actor.permissions, permisosObjetivo)` (`modules/members/privileges.ts`); nunca comparar por nombre de rol.
+- Los tokens secretos (invitaciones, refresh) viajan en cuerpo o cookie, nunca en la URL; en BD solo su SHA-256.
+- Tests de API con email: usar `mailbox` y `tokenFrom()` de `test/helpers.ts`; el token se lee del correo, jamás de la respuesta.

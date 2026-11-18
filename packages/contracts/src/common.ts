@@ -43,5 +43,12 @@ export const ERROR_CODES = [
   'SLUG_TAKEN',
   'TOO_MANY_ATTEMPTS',
   'INTERNAL_ERROR',
+  'ALREADY_MEMBER',
+  'INVITATION_INVALID',
+  'LAST_OWNER',
+  'CANNOT_MODIFY_SELF',
+  'ROLE_NOT_ALLOWED',
+  'LIMIT_REACHED',
+  'ALREADY_INVITED',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

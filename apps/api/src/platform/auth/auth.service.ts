@@ -211,6 +211,17 @@ export class AuthService {
     );
   }
 
+  /** Inicia sesión directamente para un usuario ya verificado por otro medio (p.ej. aceptó una invitación). */
+  async startSessionFor(
+    user: { id: string; email: string; fullName: string },
+    activeTenantId: string,
+    client: ClientInfo,
+  ): Promise<AuthResult> {
+    const memberships = await this.listMemberships(user.id);
+    const session = await this.sessions.start(user.id, activeTenantId, client);
+    return this.buildResult(user, memberships, activeTenantId, session);
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Refresh / logout / cambio de empresa
   // ---------------------------------------------------------------------------------------------

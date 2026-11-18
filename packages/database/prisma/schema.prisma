@@ -1,9 +1,9 @@
 generator client {
-  provider        = "prisma-client"
-  output          = "../src/generated"
-  moduleFormat    = "esm"
+  provider            = "prisma-client"
+  output              = "../src/generated"
+  previewFeatures     = ["partialIndexes"]
   importFileExtension = "js"
-  previewFeatures = ["partialIndexes"]
+  moduleFormat        = "esm"
 }
 
 datasource db {
@@ -43,12 +43,13 @@ model invitations {
   accepted_at        DateTime?          @db.Timestamptz(6)
   invited_by         String             @db.Uuid
   created_at         DateTime           @default(now()) @db.Timestamptz(6)
+  revoked_at         DateTime?          @db.Timestamptz(6)
   tenants            tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tenant_memberships tenant_memberships @relation(fields: [tenant_id, invited_by], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
   roles              roles              @relation(fields: [tenant_id, role_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([tenant_id, id])
-  @@unique([tenant_id, email], map: "uq_invitations_pending", where: raw("(accepted_at IS NULL)"))
+  @@unique([tenant_id, email], map: "uq_invitations_pending", where: raw("((accepted_at IS NULL) AND (revoked_at IS NULL))"))
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.

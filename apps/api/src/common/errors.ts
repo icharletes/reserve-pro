@@ -31,6 +31,17 @@ export const Errors = {
   notFound: (what = 'Recurso') => new AppError(404, 'NOT_FOUND', `${what} no encontrado`),
   emailTaken: () => new AppError(409, 'EMAIL_TAKEN', 'Ya existe una cuenta con ese email'),
   slugTaken: () => new AppError(409, 'SLUG_TAKEN', 'Ese identificador ya está en uso'),
+  alreadyMember: () => new AppError(409, 'ALREADY_MEMBER', 'Esa persona ya es miembro de la empresa'),
+  alreadyInvited: () => new AppError(409, 'ALREADY_INVITED', 'Ya existe una invitación pendiente para ese email'),
+  invitationInvalid: () =>
+    new AppError(400, 'INVITATION_INVALID', 'La invitación no es válida, ya fue usada o expiró'),
+  lastOwner: () =>
+    new AppError(409, 'LAST_OWNER', 'La empresa debe conservar al menos un propietario activo'),
+  cannotModifySelf: () =>
+    new AppError(409, 'CANNOT_MODIFY_SELF', 'No puedes cambiar tu propio estado ni tus propios roles'),
+  roleNotAllowed: () =>
+    new AppError(403, 'ROLE_NOT_ALLOWED', 'No puedes otorgar ni gestionar permisos superiores a los tuyos'),
+  limitReached: (what: string) => new AppError(409, 'LIMIT_REACHED', `Se alcanzó el límite de ${what}`),
   tooManyAttempts: () =>
     new AppError(429, 'TOO_MANY_ATTEMPTS', 'Demasiados intentos. Intenta de nuevo más tarde'),
   validation: (errors: FieldError[]) =>

@@ -6,8 +6,39 @@ import request, { type Response } from 'supertest';
 import type { AuthResponse } from '@reservepro/contracts';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/bootstrap.js';
+import { EMAIL_PROVIDER, type EmailMessage, type EmailProvider } from '../src/platform/email/email.module.js';
 
 export const PASSWORD = 'Str0ng-Passw0rd!';
+export type Auth = { Authorization: string };
+
+/** Buzón falso: captura los emails que enviaría la API (sin red) para poder leer el token como lo haría una persona. */
+export class CapturingEmailProvider implements EmailProvider {
+  sent: EmailMessage[] = [];
+  private failures = 0;
+
+  async send(message: EmailMessage): Promise<void> {
+    if (this.failures > 0) {
+      this.failures--;
+      throw new Error('SMTP caído (simulado)');
+    }
+    this.sent.push(message);
+  }
+  /** Hace fallar los próximos `n` envíos. */
+  failNext(n = 1): void {
+    this.failures = n;
+  }
+  last(to: string): EmailMessage | undefined {
+    return [...this.sent].reverse().find((m) => m.to === to);
+  }
+}
+export const mailbox = new CapturingEmailProvider();
+
+/** Extrae el token del enlace (#token=…) del cuerpo de texto del email. */
+export function tokenFrom(message: EmailMessage | undefined): string {
+  const match = message ? /#token=([A-Za-z0-9_-]+)/.exec(message.text) : null;
+  if (!match) throw new Error('el email no contiene un enlace con token');
+  return match[1]!;
+}
 
 export async function createTestApp(extraControllers: Type[] = []): Promise<INestApplication> {
   process.env['NODE_ENV'] = 'test';
@@ -16,7 +47,10 @@ export async function createTestApp(extraControllers: Type[] = []): Promise<INes
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: extraControllers,
-  }).compile();
+  })
+    .overrideProvider(EMAIL_PROVIDER)
+    .useValue(mailbox)
+    .compile();
   const app = moduleRef.createNestApplication();
   configureApp(app);
   await app.init();
@@ -104,4 +138,24 @@ export async function addMembership(
     [args.tenantId, membershipId, args.roleKey],
   );
   return membershipId;
+}
+
+export interface Joined {
+  email: string;
+  userId: string;
+  membershipId: string;
+  auth: { Authorization: string };
+}
+
+/** Crea un usuario nuevo y lo une a `tenantId` con el rol indicado; devuelve su sesión ya con esa empresa activa. */
+export async function joinTenant(
+  app: INestApplication,
+  owner: pg.Pool,
+  tenantId: string,
+  roleKey: string,
+): Promise<Joined> {
+  const u = await register(app);
+  const membershipId = await addMembership(owner, { tenantId, userId: u.body.user.id, roleKey });
+  const l = await login(app, u.email, { tenantId });
+  return { email: u.email, userId: u.body.user.id, membershipId, auth: l.auth };
 }

@@ -268,6 +268,66 @@ describe('resolución pública por slug (sin contexto de tenant)', () => {
   });
 });
 
+describe('invitaciones (migración 0003)', () => {
+  const hashA = Buffer.from('a'.repeat(32));
+  const hashB = Buffer.from('b'.repeat(32));
+  let invA: string;
+
+  beforeAll(async () => {
+    invA = randomUUID();
+    await owner.query(
+      `INSERT INTO invitations(id,tenant_id,email,role_id,token_hash,expires_at,invited_by)
+       VALUES ($1,$2,'nuevo@x.test',$3,$4, now() + interval '7 days', $5)`,
+      [invA, ids.tA, ids.rA, hashA, ids.mA],
+    );
+  });
+
+  it('se resuelve por el hash exacto del token SIN contexto de tenant, con datos mínimos', async () => {
+    const rows = await db.$queryRaw<{ id: string; tenant_name: string; role_name: string; email: string }[]>`
+      SELECT * FROM rp_resolve_invitation(${hashA})`;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: invA, tenant_name: 'Tenant A', role_name: 'Owner', email: 'nuevo@x.test' });
+  });
+
+  it('un hash distinto no devuelve nada (no enumerable)', async () => {
+    const rows = await db.$queryRaw<unknown[]>`SELECT * FROM rp_resolve_invitation(${hashB})`;
+    expect(rows).toHaveLength(0);
+  });
+
+  it('sin contexto, la tabla invitations sigue siendo invisible (solo la función la expone)', async () => {
+    expect(await db.invitations.count()).toBe(0);
+  });
+
+  it('solo puede existir una invitación PENDIENTE por email y empresa', async () => {
+    await expect(
+      owner.query(
+        `INSERT INTO invitations(id,tenant_id,email,role_id,token_hash,expires_at,invited_by)
+         VALUES (gen_random_uuid(),$1,'nuevo@x.test',$2,$3, now() + interval '7 days',$4)`,
+        [ids.tA, ids.rA, hashB, ids.mA],
+      ),
+    ).rejects.toThrow(/uq_invitations_pending|duplicate/i);
+  });
+
+  it('tras REVOCAR, se puede reinvitar al mismo email', async () => {
+    await owner.query(`UPDATE invitations SET revoked_at = now() WHERE id=$1`, [invA]);
+    await owner.query(
+      `INSERT INTO invitations(id,tenant_id,email,role_id,token_hash,expires_at,invited_by)
+       VALUES (gen_random_uuid(),$1,'nuevo@x.test',$2,$3, now() + interval '7 days',$4)`,
+      [ids.tA, ids.rA, hashB, ids.mA],
+    );
+    const pending = await owner.query(
+      `SELECT count(*)::int AS n FROM invitations WHERE tenant_id=$1 AND email='nuevo@x.test' AND revoked_at IS NULL`,
+      [ids.tA],
+    );
+    expect(pending.rows[0].n).toBe(1);
+  });
+
+  it('una invitación de A es invisible desde el contexto de B', async () => {
+    expect(await withTenant(db, { tenantId: ids.tB }, (tx) => tx.invitations.count())).toBe(0);
+    expect(await withTenant(db, { tenantId: ids.tA }, (tx) => tx.invitations.count())).toBeGreaterThan(0);
+  });
+});
+
 describe('rp_system (BYPASSRLS)', () => {
   it('ve todos los tenants: por eso su uso queda restringido y revisado', async () => {
     const n = await system.tenants.count();
