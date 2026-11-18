@@ -58,18 +58,21 @@ export class AuthService {
     const membershipId = uuidv7();
 
     const base = dto.slug ?? slugify(dto.businessName);
-    const candidates = dto.slug ? [base] : [base, ...Array.from({ length: 4 }, () => withRandomSuffix(base))];
+    const candidates = dto.slug
+      ? [base]
+      : [base, ...Array.from({ length: 4 }, () => withRandomSuffix(base))];
 
     let created = false;
-    let slug = base;
     for (const candidate of candidates) {
       if (!(await this.isSlugAvailable(candidate))) {
         if (dto.slug) throw Errors.slugTaken();
         continue;
       }
-      slug = candidate;
       try {
-        await this.createTenantWithOwner({ ...dto, slug }, { userId, tenantId, membershipId, passwordHash });
+        await this.createTenantWithOwner(
+          { ...dto, slug: candidate },
+          { userId, tenantId, membershipId, passwordHash },
+        );
         created = true;
         break;
       } catch (err) {
@@ -99,7 +102,9 @@ export class AuthService {
     const db = this.tdb.global;
     if (await db.reserved_slugs.findUnique({ where: { slug } })) return false;
     // La resolución por slug es una función SECURITY DEFINER: funciona sin contexto de tenant.
-    const rows = await db.$queryRaw<{ id: string }[]>`SELECT id FROM rp_resolve_tenant_by_slug(${slug})`;
+    const rows = await db.$queryRaw<
+      { id: string }[]
+    >`SELECT id FROM rp_resolve_tenant_by_slug(${slug})`;
     return rows.length === 0;
   }
 
@@ -110,7 +115,12 @@ export class AuthService {
     // El contexto es el id de la empresa NUEVA: la política WITH CHECK de RLS lo exige (ADR-004).
     await this.tdb.run({ tenantId: ids.tenantId }, async (tx) => {
       await tx.users.create({
-        data: { id: ids.userId, email: dto.email, password_hash: ids.passwordHash, full_name: dto.fullName },
+        data: {
+          id: ids.userId,
+          email: dto.email,
+          password_hash: ids.passwordHash,
+          full_name: dto.fullName,
+        },
       });
       await tx.tenants.create({
         data: {
@@ -136,7 +146,11 @@ export class AuthService {
       });
       await tx.role_permissions.createMany({
         data: ROLE_TEMPLATES.flatMap((t) =>
-          t.permissions.map((p) => ({ tenant_id: ids.tenantId, role_id: roleIds.get(t.key)!, permission_key: p })),
+          t.permissions.map((p) => ({
+            tenant_id: ids.tenantId,
+            role_id: roleIds.get(t.key)!,
+            permission_key: p,
+          })),
         ),
       });
 
@@ -144,7 +158,11 @@ export class AuthService {
         data: { id: ids.membershipId, tenant_id: ids.tenantId, user_id: ids.userId },
       });
       await tx.membership_roles.create({
-        data: { tenant_id: ids.tenantId, membership_id: ids.membershipId, role_id: roleIds.get('owner')! },
+        data: {
+          tenant_id: ids.tenantId,
+          membership_id: ids.membershipId,
+          role_id: roleIds.get('owner')!,
+        },
       });
 
       await this.audit.record(tx, {
@@ -213,7 +231,12 @@ export class AuthService {
 
     const session = await this.sessions.start(user.id, activeTenantId, client);
     return this.buildResult(
-      { id: user.id, email: user.email, fullName: user.full_name, emailVerified: user.email_verified_at !== null },
+      {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        emailVerified: user.email_verified_at !== null,
+      },
       memberships,
       activeTenantId,
       session,
@@ -250,7 +273,12 @@ export class AuthService {
       await this.sessions.setActiveTenant(issued.sessionId, active);
     }
     return this.buildResult(
-      { id: user.id, email: user.email, fullName: user.full_name, emailVerified: user.email_verified_at !== null },
+      {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        emailVerified: user.email_verified_at !== null,
+      },
       memberships,
       active,
       issued,
@@ -337,7 +365,9 @@ export class AuthService {
     activeTenantId: string | null,
     session: { token: string; sessionId: string },
   ): Promise<AuthResult> {
-    const active = activeTenantId ? memberships.find((m) => m.tenantId === activeTenantId) : undefined;
+    const active = activeTenantId
+      ? memberships.find((m) => m.tenantId === activeTenantId)
+      : undefined;
     const accessToken = await this.tokens.signAccess({
       sub: user.id,
       sid: session.sessionId,

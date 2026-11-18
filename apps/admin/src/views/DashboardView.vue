@@ -24,7 +24,9 @@ async function resend() {
   <AlertBox v-if="auth.user && !auth.user.emailVerified" kind="info">
     <strong>Verifica tu email.</strong> Hasta entonces no podrás invitar a otras personas.
     <template v-if="resent"> Te enviamos un correo nuevo.</template>
-    <button v-else type="button" class="small" :disabled="loading" @click="resend">Reenviar correo</button>
+    <button v-else type="button" class="small" :disabled="loading" @click="resend">
+      Reenviar correo
+    </button>
     <span v-if="error" role="alert"> {{ error }}</span>
   </AlertBox>
 

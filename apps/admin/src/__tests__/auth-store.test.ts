@@ -3,7 +3,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiMock, auth, ids, me } from './helpers';
 
-vi.mock('../api', () => ({ api: apiMock, setAuthLostHandler: (fn: () => void) => (lostHandler = fn) }));
+vi.mock('../api', () => ({
+  api: apiMock,
+  setAuthLostHandler: (fn: () => void) => (lostHandler = fn),
+}));
 let lostHandler: () => void = () => undefined;
 
 import { resetBootstrapForTests, useAuthStore } from '../stores/auth';

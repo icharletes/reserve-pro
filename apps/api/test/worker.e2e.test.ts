@@ -4,7 +4,10 @@ import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { MaintenanceProcessor, MAINTENANCE_QUEUE } from '../src/worker/maintenance/maintenance.processor.js';
+import {
+  MaintenanceProcessor,
+  MAINTENANCE_QUEUE,
+} from '../src/worker/maintenance/maintenance.processor.js';
 import { MaintenanceService } from '../src/worker/maintenance/maintenance.service.js';
 import { WorkerModule } from '../src/worker/worker.module.js';
 import { createTestApp, ownerPool, register } from './helpers.js';
@@ -59,7 +62,9 @@ const insertRefresh = (expiresAt: Date, revokedAt: Date | null = null, n = 1) =>
      SELECT gen_random_uuid(), $1, gen_random_uuid(), gen_random_bytes(32), $2, $3 FROM generate_series(1,$4)`,
     [userId, expiresAt, revokedAt, n],
   );
-const count = async (table: string) => (await owner.query(`SELECT count(*)::int AS n FROM ${table} WHERE user_id=$1`, [userId])).rows[0].n as number;
+const count = async (table: string) =>
+  (await owner.query(`SELECT count(*)::int AS n FROM ${table} WHERE user_id=$1`, [userId])).rows[0]
+    .n as number;
 
 describe('purga de tokens vencidos (MaintenanceService)', () => {
   it('borra los vencidos hace más de 7 días y conserva los recientes y los vigentes', async () => {
@@ -80,7 +85,10 @@ describe('purga de tokens vencidos (MaintenanceService)', () => {
     await owner.query(`DELETE FROM email_verification_tokens WHERE user_id=$1`, [userId]);
     for (const table of ['password_reset_tokens', 'email_verification_tokens']) {
       const ins = (exp: Date, used: Date | null) =>
-        owner.query(`INSERT INTO ${table}(id,user_id,token_hash,expires_at,used_at) VALUES (gen_random_uuid(),$1,gen_random_bytes(32),$2,$3)`, [userId, exp, used]);
+        owner.query(
+          `INSERT INTO ${table}(id,user_id,token_hash,expires_at,used_at) VALUES (gen_random_uuid(),$1,gen_random_bytes(32),$2,$3)`,
+          [userId, exp, used],
+        );
       await ins(ago(10), null); //            vencido hace 10 d      => se borra
       await ins(new Date(Date.now() + 3_600_000), ago(10)); // usado hace 10 d => se borra
       await ins(new Date(Date.now() + 3_600_000), ago(1)); //  usado hace 1 d  => se conserva
@@ -101,7 +109,11 @@ describe('purga de tokens vencidos (MaintenanceService)', () => {
     expect(first.refreshTokens).toBe(2_500);
     expect(await count('refresh_tokens')).toBe(3);
     const second = await service.purgeExpiredTokens();
-    expect(second).toEqual({ refreshTokens: 0, passwordResetTokens: 0, emailVerificationTokens: 0 });
+    expect(second).toEqual({
+      refreshTokens: 0,
+      passwordResetTokens: 0,
+      emailVerificationTokens: 0,
+    });
   });
 
   it('la purga NO afecta a las sesiones activas de nadie (el access token sigue siendo válido)', async () => {
@@ -131,13 +143,16 @@ describe('worker real con BullMQ y Redis', () => {
     await processor.enqueue('purge-expired-tokens');
 
     const deadline = Date.now() + 8_000;
-    while ((await count('refresh_tokens')) > 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+    while ((await count('refresh_tokens')) > 0 && Date.now() < deadline)
+      await new Promise((r) => setTimeout(r, 100));
     expect(await count('refresh_tokens')).toBe(0);
   });
 
   it('un job con nombre desconocido FALLA (no se ignora en silencio)', async () => {
     const processor = moduleRef.get(MaintenanceProcessor);
-    await expect(processor.process({ name: 'inventado' } as never)).rejects.toThrow(/job desconocido/);
+    await expect(processor.process({ name: 'inventado' } as never)).rejects.toThrow(
+      /job desconocido/,
+    );
   });
 
   it('dos réplicas del worker comparten UN solo programador (sin trabajo duplicado)', async () => {

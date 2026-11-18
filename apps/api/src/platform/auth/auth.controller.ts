@@ -1,5 +1,8 @@
 import { ApiDoc } from '../openapi/api-doc.decorator.js';
-import { authResponse as authResponseSchema, meResponse as meResponseSchema } from '@reservepro/contracts';
+import {
+  authResponse as authResponseSchema,
+  meResponse as meResponseSchema,
+} from '@reservepro/contracts';
 import { z as zod } from 'zod';
 import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -44,7 +47,8 @@ export class AuthController {
   @RateLimit({ name: 'register', limit: 5, windowSec: 3600, by: 'ip' })
   @ApiDoc({
     summary: 'Registrar una empresa y su propietario',
-    description: 'Crea en una transacción: usuario, empresa, roles de sistema y membresía de propietario. Inicia sesión (cookie rp_refresh) y envía el email de verificación.',
+    description:
+      'Crea en una transacción: usuario, empresa, roles de sistema y membresía de propietario. Inicia sesión (cookie rp_refresh) y envía el email de verificación.',
     response: authResponseSchema,
     errors: { 409: 'Email ya registrado o identificador (slug) en uso (EMAIL_TAKEN / SLUG_TAKEN)' },
   })
@@ -67,9 +71,13 @@ export class AuthController {
   )
   @ApiDoc({
     summary: 'Iniciar sesión',
-    description: 'Si el usuario tiene varias empresas y no se indica `tenantId`, `activeTenantId` es null y debe llamarse a switch-tenant.',
+    description:
+      'Si el usuario tiene varias empresas y no se indica `tenantId`, `activeTenantId` es null y debe llamarse a switch-tenant.',
     response: authResponseSchema,
-    errors: { 401: 'Credenciales incorrectas (INVALID_CREDENTIALS)', 429: 'Cuenta bloqueada temporalmente (TOO_MANY_ATTEMPTS) o límite de tasa (RATE_LIMITED)' },
+    errors: {
+      401: 'Credenciales incorrectas (INVALID_CREDENTIALS)',
+      429: 'Cuenta bloqueada temporalmente (TOO_MANY_ATTEMPTS) o límite de tasa (RATE_LIMITED)',
+    },
   })
   @Post('login')
   @HttpCode(200)
@@ -88,9 +96,13 @@ export class AuthController {
   @RateLimit({ name: 'refresh', limit: 60, windowSec: 60, by: 'ip' })
   @ApiDoc({
     summary: 'Rotar el refresh token',
-    description: 'Lee la cookie HttpOnly `rp_refresh` y exige la cabecera `x-rp-csrf: 1`. Reutilizar un token ya rotado revoca toda la sesión.',
+    description:
+      'Lee la cookie HttpOnly `rp_refresh` y exige la cabecera `x-rp-csrf: 1`. Reutilizar un token ya rotado revoca toda la sesión.',
     response: authResponseSchema,
-    errors: { 401: 'Refresh token inválido, vencido o reutilizado (TOKEN_INVALID)', 403: 'Falta la cabecera anti-CSRF (CSRF_REJECTED)' },
+    errors: {
+      401: 'Refresh token inválido, vencido o reutilizado (TOKEN_INVALID)',
+      403: 'Falta la cabecera anti-CSRF (CSRF_REJECTED)',
+    },
   })
   @Post('refresh')
   @HttpCode(200)
@@ -109,7 +121,12 @@ export class AuthController {
   }
 
   @Public()
-  @ApiDoc({ summary: 'Cerrar sesión', description: 'Idempotente. Exige la cabecera `x-rp-csrf: 1`.', response: null, errors: { 403: 'Falta la cabecera anti-CSRF (CSRF_REJECTED)' } })
+  @ApiDoc({
+    summary: 'Cerrar sesión',
+    description: 'Idempotente. Exige la cabecera `x-rp-csrf: 1`.',
+    response: null,
+    errors: { 403: 'Falta la cabecera anti-CSRF (CSRF_REJECTED)' },
+  })
   @RateLimit({ name: 'logout', limit: 60, windowSec: 60, by: 'ip' })
   @Post('logout')
   @HttpCode(204)
@@ -120,10 +137,17 @@ export class AuthController {
   }
 
   @Authenticated()
-  @ApiDoc({ summary: 'Cambiar la empresa activa', response: authResponseSchema, errors: { 403: 'El usuario no pertenece a esa empresa (FORBIDDEN)' } })
+  @ApiDoc({
+    summary: 'Cambiar la empresa activa',
+    response: authResponseSchema,
+    errors: { 403: 'El usuario no pertenece a esa empresa (FORBIDDEN)' },
+  })
   @Post('switch-tenant')
   @HttpCode(200)
-  switchTenant(@Body(new ZodPipe(switchTenantRequest)) body: SwitchTenantRequest, @Req() req: AuthedRequest) {
+  switchTenant(
+    @Body(new ZodPipe(switchTenantRequest)) body: SwitchTenantRequest,
+    @Req() req: AuthedRequest,
+  ) {
     return this.auth.switchTenant(req.principal!, body.tenantId);
   }
 
@@ -134,7 +158,11 @@ export class AuthController {
     { name: 'forgot-ip', limit: 10, windowSec: 3600, by: 'ip' },
     { name: 'forgot-email', limit: 3, windowSec: 3600, by: 'email' },
   )
-  @ApiDoc({ summary: 'Solicitar recuperación de contraseña', description: 'Responde SIEMPRE 202, exista o no la cuenta. El enlace llega por email.', response: zod.object({ status: zod.literal('accepted') }) })
+  @ApiDoc({
+    summary: 'Solicitar recuperación de contraseña',
+    description: 'Responde SIEMPRE 202, exista o no la cuenta. El enlace llega por email.',
+    response: zod.object({ status: zod.literal('accepted') }),
+  })
   @Post('forgot-password')
   @HttpCode(202)
   async forgotPassword(@Body(new ZodPipe(forgotPasswordRequest)) body: ForgotPasswordRequest) {
@@ -144,16 +172,30 @@ export class AuthController {
 
   @Public()
   @RateLimit({ name: 'reset-ip', limit: 10, windowSec: 900, by: 'ip' })
-  @ApiDoc({ summary: 'Restablecer la contraseña con el token del email', description: 'Atómico y de un solo uso. Cierra TODAS las sesiones del usuario.', response: null, errors: { 400: 'Enlace inválido o vencido (LINK_INVALID) o contraseña débil (VALIDATION_ERROR)' } })
+  @ApiDoc({
+    summary: 'Restablecer la contraseña con el token del email',
+    description: 'Atómico y de un solo uso. Cierra TODAS las sesiones del usuario.',
+    response: null,
+    errors: {
+      400: 'Enlace inválido o vencido (LINK_INVALID) o contraseña débil (VALIDATION_ERROR)',
+    },
+  })
   @Post('reset-password')
   @HttpCode(204)
-  async resetPassword(@Body(new ZodPipe(resetPasswordRequest)) body: ResetPasswordRequest): Promise<void> {
+  async resetPassword(
+    @Body(new ZodPipe(resetPasswordRequest)) body: ResetPasswordRequest,
+  ): Promise<void> {
     await this.account.resetPassword(body.token, body.password);
   }
 
   @Authenticated()
   @RateLimit({ name: 'change-password', limit: 5, windowSec: 900, by: 'user' })
-  @ApiDoc({ summary: 'Cambiar la contraseña (autenticado)', description: 'Cierra las OTRAS sesiones y conserva la actual. Contraseña actual incorrecta: 400 INVALID_CREDENTIALS (no 401).', response: null })
+  @ApiDoc({
+    summary: 'Cambiar la contraseña (autenticado)',
+    description:
+      'Cierra las OTRAS sesiones y conserva la actual. Contraseña actual incorrecta: 400 INVALID_CREDENTIALS (no 401).',
+    response: null,
+  })
   @Post('change-password')
   @HttpCode(204)
   async changePassword(
@@ -165,16 +207,26 @@ export class AuthController {
 
   @Public()
   @RateLimit({ name: 'verify-email', limit: 20, windowSec: 900, by: 'ip' })
-  @ApiDoc({ summary: 'Verificar el email con el token recibido', response: null, errors: { 400: 'Enlace inválido o vencido (LINK_INVALID)' } })
+  @ApiDoc({
+    summary: 'Verificar el email con el token recibido',
+    response: null,
+    errors: { 400: 'Enlace inválido o vencido (LINK_INVALID)' },
+  })
   @Post('verify-email')
   @HttpCode(204)
-  async verifyEmail(@Body(new ZodPipe(verifyEmailRequest)) body: VerifyEmailRequest): Promise<void> {
+  async verifyEmail(
+    @Body(new ZodPipe(verifyEmailRequest)) body: VerifyEmailRequest,
+  ): Promise<void> {
     await this.account.verifyEmail(body.token);
   }
 
   @Authenticated()
   @RateLimit({ name: 'resend-verification', limit: 3, windowSec: 3600, by: 'user' })
-  @ApiDoc({ summary: 'Reenviar el email de verificación', description: 'Invalida el enlace anterior. No hace nada si el email ya está verificado.', response: null })
+  @ApiDoc({
+    summary: 'Reenviar el email de verificación',
+    description: 'Invalida el enlace anterior. No hace nada si el email ya está verificado.',
+    response: null,
+  })
   @Post('resend-verification')
   @HttpCode(204)
   async resendVerification(@Req() req: AuthedRequest): Promise<void> {
@@ -216,7 +268,10 @@ export class MeController {
   constructor(private readonly auth: AuthService) {}
 
   @Authenticated()
-  @ApiDoc({ summary: 'Usuario autenticado, empresa activa, roles y permisos', response: meResponseSchema })
+  @ApiDoc({
+    summary: 'Usuario autenticado, empresa activa, roles y permisos',
+    response: meResponseSchema,
+  })
   @Get()
   me(@Req() req: AuthedRequest) {
     return this.auth.me(req.principal!);

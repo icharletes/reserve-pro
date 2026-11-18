@@ -50,9 +50,14 @@ describe('crear invitaciones (lado empresa)', () => {
 
     // El token no aparece en la respuesta, ni en la BD (solo su hash), ni en la auditoría.
     expect(JSON.stringify(res.body)).not.toContain(token);
-    const dump = await owner.query(`SELECT row_to_json(i)::text AS j FROM invitations i WHERE email=$1`, [email]);
+    const dump = await owner.query(
+      `SELECT row_to_json(i)::text AS j FROM invitations i WHERE email=$1`,
+      [email],
+    );
     expect(dump.rows[0].j).not.toContain(token);
-    const audit = await owner.query(`SELECT row_to_json(a)::text AS j FROM audit_logs a WHERE entity_type='invitation'`);
+    const audit = await owner.query(
+      `SELECT row_to_json(a)::text AS j FROM audit_logs a WHERE entity_type='invitation'`,
+    );
     for (const r of audit.rows) expect(r.j).not.toContain(token);
   });
 
@@ -74,7 +79,9 @@ describe('crear invitaciones (lado empresa)', () => {
     expect(res.body.emailSent).toBe(false);
     expect(mailbox.last(email)).toBeUndefined();
 
-    const resend = await http(app).post(`/api/v1/tenants/current/invitations/${res.body.invitation.id}/resend`).set(o.auth);
+    const resend = await http(app)
+      .post(`/api/v1/tenants/current/invitations/${res.body.invitation.id}/resend`)
+      .set(o.auth);
     expect(resend.status).toBe(200);
     expect(resend.body.emailSent).toBe(true);
     expect(mailbox.last(email)).toBeDefined();
@@ -85,7 +92,9 @@ describe('crear invitaciones (lado empresa)', () => {
     const email = newEmail();
     const created = await invite(o.auth, email);
     const oldToken = tokenFrom(mailbox.last(email));
-    await http(app).post(`/api/v1/tenants/current/invitations/${created.body.invitation.id}/resend`).set(o.auth);
+    await http(app)
+      .post(`/api/v1/tenants/current/invitations/${created.body.invitation.id}/resend`)
+      .set(o.auth);
     const newToken = tokenFrom(mailbox.last(email));
     expect(newToken).not.toBe(oldToken);
 
@@ -123,20 +132,35 @@ describe('crear invitaciones (lado empresa)', () => {
     const o = await register(app);
     const email = newEmail();
     await invite(o.auth, email);
-    await owner.query(`UPDATE invitations SET expires_at = now() - interval '1 day' WHERE email=$1`, [email]);
+    await owner.query(
+      `UPDATE invitations SET expires_at = now() - interval '1 day' WHERE email=$1`,
+      [email],
+    );
     const again = await invite(o.auth, email);
     expect(again.status).toBe(201);
   });
 
   it('limita las invitaciones pendientes por empresa (anti-relé de correo)', async () => {
     const o = await register(app);
-    const me = (await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1`, [o.tenantId])).rows[0].id;
-    const roleId = (await owner.query(`SELECT id FROM roles WHERE tenant_id=$1 AND key='receptionist'`, [o.tenantId])).rows[0].id;
+    const me = (
+      await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1`, [o.tenantId])
+    ).rows[0].id;
+    const roleId = (
+      await owner.query(`SELECT id FROM roles WHERE tenant_id=$1 AND key='receptionist'`, [
+        o.tenantId,
+      ])
+    ).rows[0].id;
     for (let i = 0; i < 50; i++) {
       await owner.query(
         `INSERT INTO invitations(id,tenant_id,email,role_id,token_hash,expires_at,invited_by)
          VALUES (gen_random_uuid(),$1,$2,$3,$4, now() + interval '7 days',$5)`,
-        [o.tenantId, `bulk${i}@example.test`, roleId, Buffer.from(randomUUID().replace(/-/g, '') + 'xxxxxxxxxxxxxxxx'), me],
+        [
+          o.tenantId,
+          `bulk${i}@example.test`,
+          roleId,
+          Buffer.from(randomUUID().replace(/-/g, '') + 'xxxxxxxxxxxxxxxx'),
+          me,
+        ],
       );
     }
     const res = await invite(o.auth, newEmail());
@@ -153,7 +177,9 @@ describe('permisos y anti-escalada al invitar', () => {
     expect((await invite(pro.auth, newEmail())).status).toBe(403);
     expect((await invite(rec.auth, newEmail())).status).toBe(403);
     expect((await http(app).get('/api/v1/tenants/current/members').set(rec.auth)).status).toBe(403);
-    expect((await http(app).get('/api/v1/tenants/current/invitations').set(pro.auth)).status).toBe(403);
+    expect((await http(app).get('/api/v1/tenants/current/invitations').set(pro.auth)).status).toBe(
+      403,
+    );
   });
 
   it('un administrador NO puede invitar propietarios; un propietario sí', async () => {
@@ -188,8 +214,20 @@ describe('listar y revocar', () => {
     const created = await invite(o.auth, email);
     const token = tokenFrom(mailbox.last(email));
 
-    expect((await http(app).delete(`/api/v1/tenants/current/invitations/${created.body.invitation.id}`).set(o.auth)).status).toBe(204);
-    expect((await http(app).post('/api/v1/invitations/accept').send({ token, fullName: 'Ana Gómez', password: PASSWORD })).status).toBe(400);
+    expect(
+      (
+        await http(app)
+          .delete(`/api/v1/tenants/current/invitations/${created.body.invitation.id}`)
+          .set(o.auth)
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await http(app)
+          .post('/api/v1/invitations/accept')
+          .send({ token, fullName: 'Ana Gómez', password: PASSWORD })
+      ).status,
+    ).toBe(400);
     expect((await invite(o.auth, email)).status).toBe(201);
   });
 
@@ -198,15 +236,21 @@ describe('listar y revocar', () => {
     const b = await register(app);
     const created = await invite(b.auth, newEmail());
     const id = created.body.invitation.id;
-    expect((await http(app).delete(`/api/v1/tenants/current/invitations/${id}`).set(a.auth)).status).toBe(404);
-    expect((await http(app).post(`/api/v1/tenants/current/invitations/${id}/resend`).set(a.auth)).status).toBe(404);
+    expect(
+      (await http(app).delete(`/api/v1/tenants/current/invitations/${id}`).set(a.auth)).status,
+    ).toBe(404);
+    expect(
+      (await http(app).post(`/api/v1/tenants/current/invitations/${id}/resend`).set(a.auth)).status,
+    ).toBe(404);
     const still = await owner.query(`SELECT revoked_at FROM invitations WHERE id=$1`, [id]);
     expect(still.rows[0].revoked_at).toBeNull();
   });
 
   it('un id que no es UUID da 400', async () => {
     const o = await register(app);
-    expect((await http(app).delete('/api/v1/tenants/current/invitations/abc').set(o.auth)).status).toBe(400);
+    expect(
+      (await http(app).delete('/api/v1/tenants/current/invitations/abc').set(o.auth)).status,
+    ).toBe(400);
   });
 });
 
@@ -218,10 +262,20 @@ describe('aceptar invitación (lado invitado)', () => {
     const token = tokenFrom(mailbox.last(email));
 
     const ok = await http(app).post('/api/v1/invitations/preview').send({ token });
-    expect(ok.body).toEqual({ tenantName: 'Spa Lago', roleName: 'Gerente', email, accountExists: false });
+    expect(ok.body).toEqual({
+      tenantName: 'Spa Lago',
+      roleName: 'Gerente',
+      email,
+      accountExists: false,
+    });
 
-    const unknown = await http(app).post('/api/v1/invitations/preview').send({ token: 'x'.repeat(43) });
-    await owner.query(`UPDATE invitations SET expires_at = now() - interval '1 minute' WHERE email=$1`, [email]);
+    const unknown = await http(app)
+      .post('/api/v1/invitations/preview')
+      .send({ token: 'x'.repeat(43) });
+    await owner.query(
+      `UPDATE invitations SET expires_at = now() - interval '1 minute' WHERE email=$1`,
+      [email],
+    );
     const expired = await http(app).post('/api/v1/invitations/preview').send({ token });
     expect(unknown.status).toBe(400);
     expect(expired.status).toBe(400);
@@ -237,23 +291,36 @@ describe('aceptar invitación (lado invitado)', () => {
 
     const missing = await http(app).post('/api/v1/invitations/accept').send({ token });
     expect(missing.status).toBe(400);
-    expect(missing.body.errors.map((e: { path: string }) => e.path).sort()).toEqual(['fullName', 'password']);
+    expect(missing.body.errors.map((e: { path: string }) => e.path).sort()).toEqual([
+      'fullName',
+      'password',
+    ]);
 
-    const res = await http(app).post('/api/v1/invitations/accept').send({ token, fullName: 'Marta Díaz', password: PASSWORD });
+    const res = await http(app)
+      .post('/api/v1/invitations/accept')
+      .send({ token, fullName: 'Marta Díaz', password: PASSWORD });
     expect(res.status).toBe(201);
     expect(res.body.outcome).toBe('account_created');
     expect(res.body.auth.activeTenantId).toBe(o.tenantId);
     expect(cookieValue(res.headers['set-cookie'])).toBeTruthy();
 
-    const me = await http(app).get('/api/v1/me').set('Authorization', `Bearer ${res.body.auth.accessToken}`);
+    const me = await http(app)
+      .get('/api/v1/me')
+      .set('Authorization', `Bearer ${res.body.auth.accessToken}`);
     expect(me.body.roles).toEqual(['manager']);
     expect(me.body.tenant.id).toBe(o.tenantId);
 
-    const user = await owner.query(`SELECT email_verified_at, password_hash FROM users WHERE email=$1`, [email]);
+    const user = await owner.query(
+      `SELECT email_verified_at, password_hash FROM users WHERE email=$1`,
+      [email],
+    );
     expect(user.rows[0].email_verified_at).not.toBeNull(); // el token demostró el control del email
     expect(user.rows[0].password_hash).toMatch(/^\$argon2id\$/);
 
-    const audit = await owner.query(`SELECT action FROM audit_logs WHERE tenant_id=$1 AND action='invitation.accepted'`, [o.tenantId]);
+    const audit = await owner.query(
+      `SELECT action FROM audit_logs WHERE tenant_id=$1 AND action='invitation.accepted'`,
+      [o.tenantId],
+    );
     expect(audit.rowCount).toBe(1);
   });
 
@@ -263,7 +330,12 @@ describe('aceptar invitación (lado invitado)', () => {
     await invite(o.auth, email);
     const res = await http(app)
       .post('/api/v1/invitations/accept')
-      .send({ token: tokenFrom(mailbox.last(email)), fullName: 'Ana Pérez', password: PASSWORD, email: 'otro@example.test' });
+      .send({
+        token: tokenFrom(mailbox.last(email)),
+        fullName: 'Ana Pérez',
+        password: PASSWORD,
+        email: 'otro@example.test',
+      });
     expect(res.status).toBe(201);
     expect(res.body.auth.user.email).toBe(email);
   });
@@ -273,8 +345,16 @@ describe('aceptar invitación (lado invitado)', () => {
     const email = newEmail();
     await invite(o.auth, email);
     const token = tokenFrom(mailbox.last(email));
-    expect((await http(app).post('/api/v1/invitations/accept').send({ token, fullName: 'Ana Pérez', password: PASSWORD })).status).toBe(201);
-    const again = await http(app).post('/api/v1/invitations/accept').send({ token, fullName: 'Intruso', password: PASSWORD });
+    expect(
+      (
+        await http(app)
+          .post('/api/v1/invitations/accept')
+          .send({ token, fullName: 'Ana Pérez', password: PASSWORD })
+      ).status,
+    ).toBe(201);
+    const again = await http(app)
+      .post('/api/v1/invitations/accept')
+      .send({ token, fullName: 'Intruso', password: PASSWORD });
     expect(again.status).toBe(400);
     expect(again.body.code).toBe('INVITATION_INVALID');
   });
@@ -305,11 +385,15 @@ describe('aceptar invitación (lado invitado)', () => {
     const token = tokenFrom(mailbox.last(email));
     const results = await Promise.all(
       Array.from({ length: 5 }, () =>
-        http(app).post('/api/v1/invitations/accept').send({ token, fullName: 'Ana Pérez', password: PASSWORD }),
+        http(app)
+          .post('/api/v1/invitations/accept')
+          .send({ token, fullName: 'Ana Pérez', password: PASSWORD }),
       ),
     );
     expect(results.filter((r) => r.status === 201)).toHaveLength(1);
-    expect(results.filter((r) => r.status !== 201).every((r) => [400, 409].includes(r.status))).toBe(true);
+    expect(
+      results.filter((r) => r.status !== 201).every((r) => [400, 409].includes(r.status)),
+    ).toBe(true);
     const members = await owner.query(
       `SELECT count(*)::int AS n FROM tenant_memberships m JOIN users u ON u.id=m.user_id WHERE u.email=$1`,
       [email],
@@ -324,7 +408,10 @@ describe('aceptar invitación (lado invitado)', () => {
     const token = tokenFrom(mailbox.last(email));
     // Se registra por otra vía y la empresa lo agrega directamente como miembro.
     const u = await register(app, { email });
-    await owner.query(`INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2)`, [o.tenantId, u.body.user.id]);
+    await owner.query(
+      `INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2)`,
+      [o.tenantId, u.body.user.id],
+    );
 
     const res = await http(app).post('/api/v1/invitations/accept').send({ token });
     expect(res.status).toBe(409);

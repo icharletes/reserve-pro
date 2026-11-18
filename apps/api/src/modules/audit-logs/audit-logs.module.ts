@@ -27,7 +27,12 @@ export class AuditLogsService {
           ...(query.entityId ? { entity_id: query.entityId } : {}),
           ...(query.actorId ? { actor_id: query.actorId } : {}),
           ...(query.from || query.to
-            ? { created_at: { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) } }
+            ? {
+                created_at: {
+                  ...(query.from ? { gte: new Date(query.from) } : {}),
+                  ...(query.to ? { lte: new Date(query.to) } : {}),
+                },
+              }
             : {}),
         },
         orderBy: { id: 'desc' },
@@ -36,11 +41,16 @@ export class AuditLogsService {
     );
 
     const page = toPage(rows, query.limit, (r) => r.id);
-    const actorIds = [...new Set(page.items.map((r) => r.actor_id).filter((x): x is string => !!x))];
+    const actorIds = [
+      ...new Set(page.items.map((r) => r.actor_id).filter((x): x is string => !!x)),
+    ];
     const names = new Map(
-      (await this.tdb.global.users.findMany({ where: { id: { in: actorIds } }, select: { id: true, full_name: true } })).map(
-        (u) => [u.id, u.full_name],
-      ),
+      (
+        await this.tdb.global.users.findMany({
+          where: { id: { in: actorIds } },
+          select: { id: true, full_name: true },
+        })
+      ).map((u) => [u.id, u.full_name]),
     );
 
     return {
@@ -67,7 +77,12 @@ export class AuditLogsService {
 export class AuditLogsController {
   constructor(private readonly service: AuditLogsService) {}
 
-  @ApiDoc({ summary: 'Consultar la auditoría de la empresa', description: 'De lo más reciente a lo más antiguo. Filtros por acción, entidad, actor y fechas; paginado por cursor.', response: pageOf(auditLogView) })
+  @ApiDoc({
+    summary: 'Consultar la auditoría de la empresa',
+    description:
+      'De lo más reciente a lo más antiguo. Filtros por acción, entidad, actor y fechas; paginado por cursor.',
+    response: pageOf(auditLogView),
+  })
   @RequirePermissions('audit:read')
   @Get()
   list(@Query(new ZodPipe(auditQuery)) query: AuditQuery) {

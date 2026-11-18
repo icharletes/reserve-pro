@@ -10,20 +10,45 @@ const authBody = (token = 'access-1') => ({
   expiresIn: 900,
   user: { id: U1, email: 'a@b.test', fullName: 'Ana Pérez', emailVerified: true },
   activeTenantId: U2,
-  memberships: [{ membershipId: U1, tenantId: U2, tenantName: 'Mi Negocio', tenantSlug: 'mi-negocio' }],
+  memberships: [
+    { membershipId: U1, tenantId: U2, tenantName: 'Mi Negocio', tenantSlug: 'mi-negocio' },
+  ],
 });
 const meBody = {
-  user: { id: U1, email: 'a@b.test', fullName: 'Ana Pérez', isPlatformAdmin: false, emailVerified: true },
-  tenant: { id: U2, name: 'Mi Negocio', slug: 'mi-negocio', timezone: 'America/Santiago', currency: 'CLP' },
+  user: {
+    id: U1,
+    email: 'a@b.test',
+    fullName: 'Ana Pérez',
+    isPlatformAdmin: false,
+    emailVerified: true,
+  },
+  tenant: {
+    id: U2,
+    name: 'Mi Negocio',
+    slug: 'mi-negocio',
+    timezone: 'America/Santiago',
+    currency: 'CLP',
+  },
   membershipId: U1,
   roles: ['owner'],
   permissions: ['tenant:read'],
 };
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json', ...headers },
+  });
 const problem = (status: number, code: string, extra: object = {}) =>
-  json(status, { type: 'x', title: code, status, code, detail: `detalle ${code}`, requestId: 'req-12345678', ...extra });
+  json(status, {
+    type: 'x',
+    title: code,
+    status,
+    code,
+    detail: `detalle ${code}`,
+    requestId: 'req-12345678',
+    ...extra,
+  });
 
 type Call = { url: string; init: RequestInit };
 function mockFetch(handler: (call: Call) => Response | Promise<Response>) {
@@ -39,7 +64,9 @@ const header = (c: Call, name: string) => (c.init.headers as Record<string, stri
 
 describe('sesión y token', () => {
   it('login guarda el token SOLO en memoria y lo envía como Bearer; la cookie viaja con credentials', async () => {
-    const { fn, calls } = mockFetch((c) => (c.url.endsWith('/auth/login') ? json(200, authBody()) : json(200, meBody)));
+    const { fn, calls } = mockFetch((c) =>
+      c.url.endsWith('/auth/login') ? json(200, authBody()) : json(200, meBody),
+    );
     const api = new ApiClient({ fetch: fn });
     await api.login({ email: 'a@b.test', password: 'x' });
     await api.me();
@@ -65,7 +92,13 @@ describe('sesión y token', () => {
   });
 
   it('refresh y logout envían la cabecera anti-CSRF; el resto no', async () => {
-    const { fn, calls } = mockFetch((c) => (c.url.includes('/me') ? json(200, meBody) : c.url.endsWith('/logout') ? new Response(null, { status: 204 }) : json(200, authBody())));
+    const { fn, calls } = mockFetch((c) =>
+      c.url.includes('/me')
+        ? json(200, meBody)
+        : c.url.endsWith('/logout')
+          ? new Response(null, { status: 204 })
+          : json(200, authBody()),
+    );
     const api = new ApiClient({ fetch: fn });
     await api.restoreSession();
     await api.me();
@@ -108,7 +141,9 @@ describe('refresco automático ante 401', () => {
         valid.add('nuevo');
         return json(200, authBody('nuevo'));
       }
-      return header(c, 'authorization') === 'Bearer nuevo' ? json(200, meBody) : problem(401, 'TOKEN_INVALID');
+      return header(c, 'authorization') === 'Bearer nuevo'
+        ? json(200, meBody)
+        : problem(401, 'TOKEN_INVALID');
     });
     const api = new ApiClient({ fetch: fn });
     api.setAccessToken('viejo');
@@ -132,7 +167,9 @@ describe('refresco automático ante 401', () => {
     const onAuthLost = vi.fn();
     const { fn, calls } = mockFetch(() => problem(401, 'INVALID_CREDENTIALS'));
     const api = new ApiClient({ fetch: fn, onAuthLost });
-    await expect(api.login({ email: 'a@b.test', password: 'mala' })).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });
+    await expect(api.login({ email: 'a@b.test', password: 'mala' })).rejects.toMatchObject({
+      code: 'INVALID_CREDENTIALS',
+    });
     expect(calls).toHaveLength(1);
     expect(onAuthLost).not.toHaveBeenCalled();
   });
@@ -150,7 +187,9 @@ describe('refresco automático ante 401', () => {
 describe('errores', () => {
   it('problem+json: código, detalle, errores por campo y requestId', async () => {
     const body = { errors: [{ path: 'email', message: 'Email inválido' }] };
-    const api = new ApiClient({ fetch: mockFetch(() => problem(400, 'VALIDATION_ERROR', body)).fn });
+    const api = new ApiClient({
+      fetch: mockFetch(() => problem(400, 'VALIDATION_ERROR', body)).fn,
+    });
     const err = await api.login({ email: 'x', password: 'y' }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     const e = err as ApiError;
@@ -161,29 +200,51 @@ describe('errores', () => {
 
   it('429 expone Retry-After', async () => {
     const api = new ApiClient({ fetch: mockFetch(() => problem(429, 'RATE_LIMITED')).fn });
-    const res = mockFetch(() => json(429, { code: 'RATE_LIMITED', status: 429, title: 'x', type: 'x' }, { 'retry-after': '42' }));
-    const e = (await new ApiClient({ fetch: res.fn }).login({ email: 'a@b.test', password: 'x' }).catch((x: unknown) => x)) as ApiError;
+    const res = mockFetch(() =>
+      json(
+        429,
+        { code: 'RATE_LIMITED', status: 429, title: 'x', type: 'x' },
+        { 'retry-after': '42' },
+      ),
+    );
+    const e = (await new ApiClient({ fetch: res.fn })
+      .login({ email: 'a@b.test', password: 'x' })
+      .catch((x: unknown) => x)) as ApiError;
     expect(e.isRateLimited).toBe(true);
     expect(e.retryAfter).toBe(42);
     expect(api).toBeDefined();
   });
 
   it('un fallo de red se convierte en NETWORK_ERROR (sin filtrar el error original)', async () => {
-    const api = new ApiClient({ fetch: (async () => { throw new TypeError('Failed to fetch: https://secreto.interno'); }) as typeof fetch });
-    const e = (await api.login({ email: 'a@b.test', password: 'x' }).catch((x: unknown) => x)) as ApiError;
+    const api = new ApiClient({
+      fetch: (async () => {
+        throw new TypeError('Failed to fetch: https://secreto.interno');
+      }) as typeof fetch,
+    });
+    const e = (await api
+      .login({ email: 'a@b.test', password: 'x' })
+      .catch((x: unknown) => x)) as ApiError;
     expect(e).toMatchObject({ status: 0, code: 'NETWORK_ERROR' });
     expect(e.message).not.toContain('secreto');
   });
 
   it('una respuesta no JSON (HTML de un proxy) no se expone al usuario', async () => {
-    const api = new ApiClient({ fetch: mockFetch(() => new Response('<html>502 Bad Gateway nginx/1.2</html>', { status: 502 })).fn });
-    const e = (await api.login({ email: 'a@b.test', password: 'x' }).catch((x: unknown) => x)) as ApiError;
+    const api = new ApiClient({
+      fetch: mockFetch(
+        () => new Response('<html>502 Bad Gateway nginx/1.2</html>', { status: 502 }),
+      ).fn,
+    });
+    const e = (await api
+      .login({ email: 'a@b.test', password: 'x' })
+      .catch((x: unknown) => x)) as ApiError;
     expect(e.status).toBe(502);
     expect(e.message).not.toContain('nginx');
   });
 
   it('una respuesta que no cumple el contrato se rechaza (detecta divergencias API/cliente)', async () => {
-    const api = new ApiClient({ fetch: mockFetch(() => json(200, { ...meBody, permissions: 'no-es-lista' })).fn });
+    const api = new ApiClient({
+      fetch: mockFetch(() => json(200, { ...meBody, permissions: 'no-es-lista' })).fn,
+    });
     api.setAccessToken('t');
     await expect(api.me()).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
   });
@@ -210,7 +271,9 @@ describe('construcción de peticiones', () => {
   });
 
   it('el token de una invitación va en el cuerpo, nunca en la URL', async () => {
-    const { fn, calls } = mockFetch(() => json(200, { tenantName: 'N', roleName: 'R', email: 'a@b.test', accountExists: false }));
+    const { fn, calls } = mockFetch(() =>
+      json(200, { tenantName: 'N', roleName: 'R', email: 'a@b.test', accountExists: false }),
+    );
     await new ApiClient({ fetch: fn }).previewInvitation('TOKEN-SECRETO-123456789');
     expect(calls[0]!.url).not.toContain('TOKEN-SECRETO');
     expect(calls[0]!.init.body).toContain('TOKEN-SECRETO');

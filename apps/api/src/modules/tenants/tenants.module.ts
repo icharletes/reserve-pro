@@ -1,6 +1,11 @@
 import { ApiDoc } from '../../platform/openapi/api-doc.decorator.js';
 import { Body, Controller, Get, Injectable, Module, Patch } from '@nestjs/common';
-import { type TenantView, type UpdateTenantRequest, tenantView, updateTenantRequest } from '@reservepro/contracts';
+import {
+  type TenantView,
+  type UpdateTenantRequest,
+  tenantView,
+  updateTenantRequest,
+} from '@reservepro/contracts';
 import type { Prisma } from '@reservepro/database';
 import { Errors } from '../../common/errors.js';
 import { ZodPipe } from '../../common/zod.pipe.js';
@@ -101,7 +106,11 @@ export class TenantsController {
     return this.tenants.getCurrent();
   }
 
-  @ApiDoc({ summary: 'Editar la empresa activa', description: 'Actualización parcial. Queda auditada con el antes y el después.', response: tenantView })
+  @ApiDoc({
+    summary: 'Editar la empresa activa',
+    description: 'Actualización parcial. Queda auditada con el antes y el después.',
+    response: tenantView,
+  })
   @RequirePermissions('tenant:update')
   @Patch()
   update(@Body(new ZodPipe(updateTenantRequest)) body: UpdateTenantRequest) {

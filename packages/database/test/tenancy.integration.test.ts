@@ -28,7 +28,9 @@ const system = createSystemClient(urls.system, { max: 2 });
 const singleConn = createPrismaClient(urls.app, { max: 1 });
 
 beforeAll(async () => {
-  await owner.query(`INSERT INTO permissions(key, description) VALUES ('reservations:read','x') ON CONFLICT DO NOTHING`);
+  await owner.query(
+    `INSERT INTO permissions(key, description) VALUES ('reservations:read','x') ON CONFLICT DO NOTHING`,
+  );
   await owner.query(
     `INSERT INTO users(id,email,password_hash,full_name) VALUES ($1,'a@a.test','h','User A'),($2,'b@b.test','h','User B')`,
     [ids.uA, ids.uB],
@@ -48,7 +50,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await Promise.all([db.$disconnect(), system.$disconnect(), singleConn.$disconnect(), owner.end()]);
+  await Promise.all([
+    db.$disconnect(),
+    system.$disconnect(),
+    singleConn.$disconnect(),
+    owner.end(),
+  ]);
 });
 
 describe('aislamiento por contexto de tenant', () => {
@@ -76,7 +83,9 @@ describe('aislamiento por contexto de tenant', () => {
   it('no se puede INSERTAR una fila de otro tenant (WITH CHECK)', async () => {
     await expect(
       withTenant(db, { tenantId: ids.tA }, (tx) =>
-        tx.roles.create({ data: { id: randomUUID(), tenant_id: ids.tB, key: 'intruso', name: 'Intruso' } }),
+        tx.roles.create({
+          data: { id: randomUUID(), tenant_id: ids.tB, key: 'intruso', name: 'Intruso' },
+        }),
       ),
     ).rejects.toThrow();
     const intruso = await owner.query(`SELECT 1 FROM roles WHERE key='intruso'`);
@@ -136,8 +145,12 @@ describe('el contexto no se filtra entre transacciones (R4: pooling)', () => {
   });
 
   it('rechaza ids que no son UUID (sin llegar a la base de datos)', async () => {
-    await expect(withTenant(db, { tenantId: "x'; DROP TABLE tenants;--" }, async () => 1)).rejects.toThrow(/UUID/);
-    await expect(withTenant(db, { tenantId: ids.tA, userId: 'no-uuid' }, async () => 1)).rejects.toThrow(/UUID/);
+    await expect(
+      withTenant(db, { tenantId: "x'; DROP TABLE tenants;--" }, async () => 1),
+    ).rejects.toThrow(/UUID/);
+    await expect(
+      withTenant(db, { tenantId: ids.tA, userId: 'no-uuid' }, async () => 1),
+    ).rejects.toThrow(/UUID/);
   });
 });
 
@@ -154,17 +167,18 @@ describe('integridad referencial entre tenants (FK compuestas)', () => {
 
   it('tampoco como rol dueño (la FK compuesta es independiente de RLS)', async () => {
     await expect(
-      owner.query(`INSERT INTO membership_roles(tenant_id,membership_id,role_id) VALUES ($1,$2,$3)`, [
-        ids.tA,
-        ids.mA,
-        ids.rB,
-      ]),
+      owner.query(
+        `INSERT INTO membership_roles(tenant_id,membership_id,role_id) VALUES ($1,$2,$3)`,
+        [ids.tA, ids.mA, ids.rB],
+      ),
     ).rejects.toThrow(/foreign key/i);
   });
 
   it('la asignación válida (mismo tenant) sí funciona', async () => {
     await withTenant(db, { tenantId: ids.tA }, (tx) =>
-      tx.membership_roles.create({ data: { tenant_id: ids.tA, membership_id: ids.mA, role_id: ids.rA } }),
+      tx.membership_roles.create({
+        data: { tenant_id: ids.tA, membership_id: ids.mA, role_id: ids.rA },
+      }),
     );
     const n = await withTenant(db, { tenantId: ids.tA }, (tx) => tx.membership_roles.count());
     expect(n).toBe(1);
@@ -190,7 +204,10 @@ describe('usuario con membresías en varias empresas (regresión migración 0002
   const mCB = randomUUID();
 
   beforeAll(async () => {
-    await owner.query(`INSERT INTO users(id,email,password_hash,full_name) VALUES ($1,'c@c.test','h','User C')`, [uC]);
+    await owner.query(
+      `INSERT INTO users(id,email,password_hash,full_name) VALUES ($1,'c@c.test','h','User C')`,
+      [uC],
+    );
     await owner.query(
       `INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES ($1,$2,$3),($4,$5,$3)`,
       [mCA, ids.tA, uC, mCB, ids.tB],
@@ -209,15 +226,21 @@ describe('usuario con membresías en varias empresas (regresión migración 0002
   });
 
   it('CON tenant activo ve SOLO ese tenant, aunque el contexto también incluya al usuario', async () => {
-    const ts = await withTenant(db, { tenantId: ids.tA, userId: uC }, (tx) => tx.tenants.findMany());
+    const ts = await withTenant(db, { tenantId: ids.tA, userId: uC }, (tx) =>
+      tx.tenants.findMany(),
+    );
     expect(ts.map((t) => t.slug)).toEqual(['tenant-a']);
 
-    const ms = await withTenant(db, { tenantId: ids.tB, userId: uC }, (tx) => tx.tenant_memberships.findMany());
+    const ms = await withTenant(db, { tenantId: ids.tB, userId: uC }, (tx) =>
+      tx.tenant_memberships.findMany(),
+    );
     expect(ms.every((m) => m.tenant_id === ids.tB)).toBe(true);
   });
 
   it('un findFirst sin WHERE bajo un tenant activo devuelve ese tenant, no otro del usuario', async () => {
-    const t = await withTenant(db, { tenantId: ids.tB, userId: uC }, (tx) => tx.tenants.findFirst());
+    const t = await withTenant(db, { tenantId: ids.tB, userId: uC }, (tx) =>
+      tx.tenants.findFirst(),
+    );
     expect(t?.id).toBe(ids.tB);
   });
 });
@@ -226,7 +249,13 @@ describe('auditoría', () => {
   it('se puede insertar bajo el tenant propio y es visible solo para ese tenant', async () => {
     await withTenant(db, { tenantId: ids.tA }, (tx) =>
       tx.audit_logs.create({
-        data: { id: randomUUID(), tenant_id: ids.tA, actor_type: 'user', action: 'test.created', entity_type: 'test' },
+        data: {
+          id: randomUUID(),
+          tenant_id: ids.tA,
+          actor_type: 'user',
+          action: 'test.created',
+          entity_type: 'test',
+        },
       }),
     );
     expect(await withTenant(db, { tenantId: ids.tA }, (tx) => tx.audit_logs.count())).toBe(1);
@@ -237,7 +266,13 @@ describe('auditoría', () => {
     await expect(
       withTenant(db, { tenantId: ids.tA }, (tx) =>
         tx.audit_logs.create({
-          data: { id: randomUUID(), tenant_id: ids.tB, actor_type: 'user', action: 'x', entity_type: 'x' },
+          data: {
+            id: randomUUID(),
+            tenant_id: ids.tB,
+            actor_type: 'user',
+            action: 'x',
+            entity_type: 'x',
+          },
         }),
       ),
     ).rejects.toThrow();
@@ -248,22 +283,33 @@ describe('auditoría', () => {
       withTenant(db, { tenantId: ids.tA }, (tx) => tx.audit_logs.deleteMany()),
     ).rejects.toThrow(/permission denied|denegado/i);
     await expect(
-      withTenant(db, { tenantId: ids.tA }, (tx) => tx.audit_logs.updateMany({ data: { action: 'tamper' } })),
+      withTenant(db, { tenantId: ids.tA }, (tx) =>
+        tx.audit_logs.updateMany({ data: { action: 'tamper' } }),
+      ),
     ).rejects.toThrow(/permission denied|denegado/i);
   });
 });
 
 describe('resolución pública por slug (sin contexto de tenant)', () => {
   it('devuelve solo los campos mínimos de un tenant existente', async () => {
-    const rows = await db.$queryRaw<{ id: string; status: string; timezone: string; currency: string }[]>`
+    const rows = await db.$queryRaw<
+      { id: string; status: string; timezone: string; currency: string }[]
+    >`
       SELECT * FROM rp_resolve_tenant_by_slug('tenant-b')`;
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ id: ids.tB, status: 'active', timezone: 'America/Santiago', currency: 'CLP' });
+    expect(rows[0]).toMatchObject({
+      id: ids.tB,
+      status: 'active',
+      timezone: 'America/Santiago',
+      currency: 'CLP',
+    });
     expect(Object.keys(rows[0]!).sort()).toEqual(['currency', 'id', 'status', 'timezone']);
   });
 
   it('un slug inexistente no devuelve filas', async () => {
-    const rows = await db.$queryRaw<unknown[]>`SELECT * FROM rp_resolve_tenant_by_slug('no-existe')`;
+    const rows = await db.$queryRaw<
+      unknown[]
+    >`SELECT * FROM rp_resolve_tenant_by_slug('no-existe')`;
     expect(rows).toHaveLength(0);
   });
 });
@@ -283,10 +329,17 @@ describe('invitaciones (migración 0003)', () => {
   });
 
   it('se resuelve por el hash exacto del token SIN contexto de tenant, con datos mínimos', async () => {
-    const rows = await db.$queryRaw<{ id: string; tenant_name: string; role_name: string; email: string }[]>`
+    const rows = await db.$queryRaw<
+      { id: string; tenant_name: string; role_name: string; email: string }[]
+    >`
       SELECT * FROM rp_resolve_invitation(${hashA})`;
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ id: invA, tenant_name: 'Tenant A', role_name: 'Owner', email: 'nuevo@x.test' });
+    expect(rows[0]).toMatchObject({
+      id: invA,
+      tenant_name: 'Tenant A',
+      role_name: 'Owner',
+      email: 'nuevo@x.test',
+    });
   });
 
   it('un hash distinto no devuelve nada (no enumerable)', async () => {
@@ -324,7 +377,9 @@ describe('invitaciones (migración 0003)', () => {
 
   it('una invitación de A es invisible desde el contexto de B', async () => {
     expect(await withTenant(db, { tenantId: ids.tB }, (tx) => tx.invitations.count())).toBe(0);
-    expect(await withTenant(db, { tenantId: ids.tA }, (tx) => tx.invitations.count())).toBeGreaterThan(0);
+    expect(
+      await withTenant(db, { tenantId: ids.tA }, (tx) => tx.invitations.count()),
+    ).toBeGreaterThan(0);
   });
 });
 

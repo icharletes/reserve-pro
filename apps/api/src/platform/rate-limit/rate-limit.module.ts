@@ -72,7 +72,8 @@ export class RateLimitService {
 
   private identity(by: RateLimitBy, req: AuthedRequest): string {
     const ip = req.ip ?? 'unknown';
-    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 254) : '';
+    const email =
+      typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 254) : '';
     switch (by) {
       case 'ip':
         return ip;
@@ -96,7 +97,10 @@ export class RateLimitService {
     } catch (err) {
       // Si Redis cae se DEJA PASAR (fail-open): preferimos disponibilidad a bloquear a todos los usuarios.
       // Queda registrado para alertar; las defensas por cuenta (bloqueo de login) siguen activas.
-      this.logger.error({ err: (err as Error).message }, 'rate limit: Redis no disponible, se omite el límite');
+      this.logger.error(
+        { err: (err as Error).message },
+        'rate limit: Redis no disponible, se omite el límite',
+      );
       return { count: 0, ttlMs: windowMs };
     }
   }
@@ -129,15 +133,21 @@ abstract class BaseRateLimitGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (!this.service.enabled) return true;
     const req = context.switchToHttp().getRequest<AuthedRequest>();
-    const declared = this.reflector.getAllAndOverride<RateLimitRule[] | undefined>(RATE_LIMIT_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]) ?? [];
+    const declared =
+      this.reflector.getAllAndOverride<RateLimitRule[] | undefined>(RATE_LIMIT_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
 
     const allowed = this.phase === 'pre' ? PRE_AUTH : POST_AUTH;
     const rules = declared.filter((r) => allowed.includes(r.by));
     if (this.phase === 'pre') {
-      rules.unshift({ name: 'global', limit: this.config.env.RATE_LIMIT_GLOBAL_PER_MIN, windowSec: 60, by: 'ip' });
+      rules.unshift({
+        name: 'global',
+        limit: this.config.env.RATE_LIMIT_GLOBAL_PER_MIN,
+        windowSec: 60,
+        by: 'ip',
+      });
     }
     for (const rule of rules) await this.service.consume(rule, req);
     return true;

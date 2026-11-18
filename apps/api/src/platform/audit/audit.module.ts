@@ -27,7 +27,10 @@ export class AuditService {
   async record(tx: Tx, entry: AuditEntry): Promise<void> {
     const principal = this.cls.get('principal');
     const tenantId = entry.tenantId ?? principal?.tenantId ?? undefined;
-    if (!tenantId) throw new Error('AuditService.record: falta tenantId (acciones de plataforma usan rp_system)');
+    if (!tenantId)
+      throw new Error(
+        'AuditService.record: falta tenantId (acciones de plataforma usan rp_system)',
+      );
 
     await tx.audit_logs.create({
       data: {

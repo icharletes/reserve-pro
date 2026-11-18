@@ -33,7 +33,10 @@ export class TokenService {
   }
 
   signAccess(claims: AccessClaims): Promise<string> {
-    return new SignJWT({ sid: claims.sid, ...(claims.tid ? { tid: claims.tid, mid: claims.mid } : {}) })
+    return new SignJWT({
+      sid: claims.sid,
+      ...(claims.tid ? { tid: claims.tid, mid: claims.mid } : {}),
+    })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(claims.sub)
       .setIssuer(ISSUER)

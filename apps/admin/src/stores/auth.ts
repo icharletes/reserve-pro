@@ -1,4 +1,9 @@
-import type { AuthResponse, MeResponse, MembershipSummary, PermissionKey } from '@reservepro/contracts';
+import type {
+  AuthResponse,
+  MeResponse,
+  MembershipSummary,
+  PermissionKey,
+} from '@reservepro/contracts';
 import { defineStore } from 'pinia';
 import { api, setAuthLostHandler } from '../api';
 
@@ -20,7 +25,13 @@ export const resetBootstrapForTests = (): void => {
 };
 
 export const useAuthStore = defineStore('auth', {
-  state: (): State => ({ ready: false, user: null, memberships: [], activeTenantId: null, me: null }),
+  state: (): State => ({
+    ready: false,
+    user: null,
+    memberships: [],
+    activeTenantId: null,
+    me: null,
+  }),
 
   getters: {
     isAuthenticated: (s) => s.user !== null,

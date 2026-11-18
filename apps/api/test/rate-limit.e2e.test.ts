@@ -61,7 +61,11 @@ describe('rate limiting con Redis', () => {
     app = await createTestApp([], { rateLimit: true, env: { REDIS_URL } });
     const target = uniqueEmail();
     const send = (e: string) => http(app!).post('/api/v1/auth/forgot-password').send({ email: e });
-    expect([(await send(target)).status, (await send(target)).status, (await send(target)).status]).toEqual([202, 202, 202]);
+    expect([
+      (await send(target)).status,
+      (await send(target)).status,
+      (await send(target)).status,
+    ]).toEqual([202, 202, 202]);
     const fourth = await send(target);
     expect(fourth.status).toBe(429);
     expect(Number(fourth.headers['retry-after'])).toBeGreaterThan(60); // ventana de una hora
@@ -71,29 +75,46 @@ describe('rate limiting con Redis', () => {
   it('register: 5 altas por hora por IP', async () => {
     app = await createTestApp([], { rateLimit: true, env: { REDIS_URL } });
     for (let i = 0; i < 5; i++) await register(app);
-    const sixth = await http(app)
-      .post('/api/v1/auth/register')
-      .send({ email: uniqueEmail(), password: PASSWORD, fullName: 'Persona Extra', businessName: 'Negocio Extra' });
+    const sixth = await http(app).post('/api/v1/auth/register').send({
+      email: uniqueEmail(),
+      password: PASSWORD,
+      fullName: 'Persona Extra',
+      businessName: 'Negocio Extra',
+    });
     expect(sixth.status).toBe(429);
   });
 
   it('límite por USUARIO: reenviar verificación 3 veces por hora; otro usuario no se ve afectado', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '1000' } });
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '1000' },
+    });
     // 5 altas desde la misma IP es el máximo permitido por hora: se crean exactamente 2 aquí.
     const a = await register(app, { verified: false });
     const b = await register(app, { verified: false });
-    const resend = (u: { auth: object }) => http(app!).post('/api/v1/auth/resend-verification').set(u.auth as Record<string, string>);
-    expect([(await resend(a)).status, (await resend(a)).status, (await resend(a)).status]).toEqual([204, 204, 204]);
+    const resend = (u: { auth: object }) =>
+      http(app!)
+        .post('/api/v1/auth/resend-verification')
+        .set(u.auth as Record<string, string>);
+    expect([(await resend(a)).status, (await resend(a)).status, (await resend(a)).status]).toEqual([
+      204, 204, 204,
+    ]);
     expect((await resend(a)).status).toBe(429);
     expect((await resend(b)).status).toBe(204);
   });
 
   it('límite por USUARIO en invitaciones: la 31.ª en una hora se rechaza', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '1000' } });
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '1000' },
+    });
     const o = await register(app);
     const codes: number[] = [];
     for (let i = 0; i < 31; i++) {
-      const r = await http(app).post('/api/v1/tenants/current/invitations').set(o.auth).send({ email: uniqueEmail(), roleKey: 'receptionist' });
+      const r = await http(app)
+        .post('/api/v1/tenants/current/invitations')
+        .set(o.auth)
+        .send({ email: uniqueEmail(), roleKey: 'receptionist' });
       codes.push(r.status);
     }
     expect(codes.slice(0, 30).every((c) => c === 201)).toBe(true);
@@ -101,7 +122,10 @@ describe('rate limiting con Redis', () => {
   });
 
   it('límite general por IP en TODA la API (red de seguridad), incluidas rutas públicas', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10' } });
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10' },
+    });
     const codes: number[] = [];
     for (let i = 0; i < 12; i++) codes.push((await http(app).get('/health')).status);
     expect(codes.slice(0, 10).every((c) => c === 200)).toBe(true);
@@ -109,15 +133,23 @@ describe('rate limiting con Redis', () => {
   });
 
   it('la IP no se puede falsear con X-Forwarded-For si no hay proxy confiable (TRUST_PROXY=0)', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10', TRUST_PROXY: '0' } });
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10', TRUST_PROXY: '0' },
+    });
     const codes: number[] = [];
-    for (let i = 0; i < 12; i++) codes.push((await http(app).get('/health').set('X-Forwarded-For', `10.0.0.${i}`)).status);
+    for (let i = 0; i < 12; i++)
+      codes.push((await http(app).get('/health').set('X-Forwarded-For', `10.0.0.${i}`)).status);
     expect(codes[11]).toBe(429); // cambiar de "IP" no reinicia el contador
   });
 
   it('con un proxy confiable (TRUST_PROXY=1) cada cliente real tiene su propio contador', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10', TRUST_PROXY: '1' } });
-    for (let i = 0; i < 10; i++) await http(app).get('/health').set('X-Forwarded-For', '203.0.113.1');
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10', TRUST_PROXY: '1' },
+    });
+    for (let i = 0; i < 10; i++)
+      await http(app).get('/health').set('X-Forwarded-For', '203.0.113.1');
     expect((await http(app).get('/health').set('X-Forwarded-For', '203.0.113.1')).status).toBe(429);
     expect((await http(app).get('/health').set('X-Forwarded-For', '203.0.113.2')).status).toBe(200);
   });
@@ -141,14 +173,20 @@ describe('rate limiting con Redis', () => {
   });
 
   it('desactivado por configuración: no limita', async () => {
-    app = await createTestApp([], { rateLimit: false, env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10' } });
+    app = await createTestApp([], {
+      rateLimit: false,
+      env: { REDIS_URL, RATE_LIMIT_GLOBAL_PER_MIN: '10' },
+    });
     for (let i = 0; i < 15; i++) expect((await http(app).get('/health')).status).toBe(200);
   });
 });
 
 describe('resiliencia', () => {
   it('si Redis no responde se DEJA PASAR (fail-open): ni 429 ni 500', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL: 'redis://127.0.0.1:6390', RATE_LIMIT_GLOBAL_PER_MIN: '10' } });
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL: 'redis://127.0.0.1:6390', RATE_LIMIT_GLOBAL_PER_MIN: '10' },
+    });
     for (let i = 0; i < 15; i++) expect((await http(app).get('/health')).status).toBe(200);
     // las defensas por cuenta siguen activas aunque no haya Redis
     const l = await login(app, uniqueEmail());
@@ -156,14 +194,20 @@ describe('resiliencia', () => {
   });
 
   it('readiness refleja la caída de Redis (503)', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL: 'redis://127.0.0.1:6390' } });
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL: 'redis://127.0.0.1:6390' },
+    });
     const res = await http(app).get('/health/ready');
     expect(res.status).toBe(503);
     expect(res.body).toEqual({ status: 'unavailable', checks: { database: 'up', redis: 'down' } });
   });
 
   it('sin REDIS_URL usa memoria local y también limita', async () => {
-    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL: '', RATE_LIMIT_GLOBAL_PER_MIN: '10' } });
+    app = await createTestApp([], {
+      rateLimit: true,
+      env: { REDIS_URL: '', RATE_LIMIT_GLOBAL_PER_MIN: '10' },
+    });
     const codes: number[] = [];
     for (let i = 0; i < 12; i++) codes.push((await http(app).get('/health')).status);
     expect(codes[11]).toBe(429);

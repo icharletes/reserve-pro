@@ -32,7 +32,10 @@ export class AuthGuard implements CanActivate {
     if (!meta) {
       // Falla cerrado: un endpoint sin política declarada NUNCA queda accesible.
       const where = `${context.getClass().name}.${context.getHandler().name}`;
-      this.logger.error({ where }, 'endpoint sin política de autorización (@Public/@Authenticated/@RequirePermissions)');
+      this.logger.error(
+        { where },
+        'endpoint sin política de autorización (@Public/@Authenticated/@RequirePermissions)',
+      );
       throw Errors.internal('Endpoint sin política de autorización');
     }
     if (meta.kind === 'public') return true;
@@ -52,7 +55,12 @@ export class AuthGuard implements CanActivate {
   private async loadPrincipal(claims: AccessClaims): Promise<Principal> {
     const sessionActive = (tx: { refresh_tokens: { count: (a: object) => Promise<number> } }) =>
       tx.refresh_tokens.count({
-        where: { family_id: claims.sid, user_id: claims.sub, revoked_at: null, expires_at: { gt: new Date() } },
+        where: {
+          family_id: claims.sid,
+          user_id: claims.sub,
+          revoked_at: null,
+          expires_at: { gt: new Date() },
+        },
       });
 
     if (!claims.tid || !claims.mid) {
@@ -129,10 +137,10 @@ export class PermissionsGuard implements CanActivate {
 
     const principal = context.switchToHttp().getRequest<AuthedRequest>().principal;
     if (!principal) throw Errors.unauthenticated();
-    const needsVerified = this.reflector.getAllAndOverride<boolean | undefined>(VERIFIED_EMAIL_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const needsVerified = this.reflector.getAllAndOverride<boolean | undefined>(
+      VERIFIED_EMAIL_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     if (needsVerified && !principal.emailVerified) throw Errors.emailNotVerified();
     if (meta.kind !== 'permissions') return true; // 'authenticated': basta con la sesión
     if (!principal.tenantId) throw Errors.tenantRequired();

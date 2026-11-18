@@ -80,9 +80,15 @@ export class ApiClient {
     return this.parse(res, opts.schema);
   }
 
-  private async send(method: string, path: string, opts: RequestOptions<unknown>, auth: boolean): Promise<Response> {
+  private async send(
+    method: string,
+    path: string,
+    opts: RequestOptions<unknown>,
+    auth: boolean,
+  ): Promise<Response> {
     const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(opts.query ?? {})) if (v !== undefined) qs.set(k, String(v));
+    for (const [k, v] of Object.entries(opts.query ?? {}))
+      if (v !== undefined) qs.set(k, String(v));
     const url = `${this.base}${path}${qs.size > 0 ? `?${qs}` : ''}`;
 
     const headers: Record<string, string> = { accept: 'application/json' };
@@ -111,15 +117,27 @@ export class ApiClient {
       json = text ? JSON.parse(text) : undefined;
     } catch {
       // Respuesta no JSON (p.ej. HTML de un proxy 502): se informa sin exponer su contenido.
-      throw new ApiError(res.status, 'UNKNOWN', `Respuesta inesperada del servidor (${res.status})`);
+      throw new ApiError(
+        res.status,
+        'UNKNOWN',
+        `Respuesta inesperada del servidor (${res.status})`,
+      );
     }
     if (!res.ok) {
-      throw ApiError.fromProblem(res.status, (json ?? {}) as Record<string, never>, retryAfter ? Number(retryAfter) : undefined);
+      throw ApiError.fromProblem(
+        res.status,
+        (json ?? {}) as Record<string, never>,
+        retryAfter ? Number(retryAfter) : undefined,
+      );
     }
     if (schema && (this.options.validateResponses ?? true)) {
       const parsed = schema.safeParse(json);
       if (!parsed.success) {
-        throw new ApiError(res.status, 'INVALID_RESPONSE', 'La respuesta no cumple el contrato esperado');
+        throw new ApiError(
+          res.status,
+          'INVALID_RESPONSE',
+          'La respuesta no cumple el contrato esperado',
+        );
       }
       return parsed.data;
     }
@@ -136,7 +154,11 @@ export class ApiClient {
 
   private async doRefresh(): Promise<boolean> {
     try {
-      const auth = await this.request('POST', '/auth/refresh', { auth: false, csrf: true, schema: authResponse });
+      const auth = await this.request('POST', '/auth/refresh', {
+        auth: false,
+        csrf: true,
+        schema: authResponse,
+      });
       this.accessToken = auth.accessToken;
       return true;
     } catch {
@@ -155,20 +177,28 @@ export class ApiClient {
   }
 
   register = (body: RegisterRequest) =>
-    this.authenticated(this.request('POST', '/auth/register', { body, auth: false, schema: authResponse }));
+    this.authenticated(
+      this.request('POST', '/auth/register', { body, auth: false, schema: authResponse }),
+    );
   login = (body: LoginRequest) =>
-    this.authenticated(this.request('POST', '/auth/login', { body, auth: false, schema: authResponse }));
+    this.authenticated(
+      this.request('POST', '/auth/login', { body, auth: false, schema: authResponse }),
+    );
   /** Restaura la sesión al abrir la app (usa la cookie). Devuelve null si no hay sesión. */
   async restoreSession(): Promise<AuthResponse | null> {
     try {
-      return await this.authenticated(this.request('POST', '/auth/refresh', { auth: false, csrf: true, schema: authResponse }));
+      return await this.authenticated(
+        this.request('POST', '/auth/refresh', { auth: false, csrf: true, schema: authResponse }),
+      );
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) return null;
       throw e;
     }
   }
   switchTenant = (tenantId: string) =>
-    this.authenticated(this.request('POST', '/auth/switch-tenant', { body: { tenantId }, schema: authResponse }));
+    this.authenticated(
+      this.request('POST', '/auth/switch-tenant', { body: { tenantId }, schema: authResponse }),
+    );
   async logout(): Promise<void> {
     try {
       await this.request('POST', '/auth/logout', { auth: false, csrf: true });
@@ -176,10 +206,14 @@ export class ApiClient {
       this.accessToken = null;
     }
   }
-  forgotPassword = (body: ForgotPasswordRequest) => this.request<void>('POST', '/auth/forgot-password', { body, auth: false });
-  resetPassword = (body: ResetPasswordRequest) => this.request<void>('POST', '/auth/reset-password', { body, auth: false });
-  changePassword = (body: ChangePasswordRequest) => this.request<void>('POST', '/auth/change-password', { body });
-  verifyEmail = (token: string) => this.request<void>('POST', '/auth/verify-email', { body: { token }, auth: false });
+  forgotPassword = (body: ForgotPasswordRequest) =>
+    this.request<void>('POST', '/auth/forgot-password', { body, auth: false });
+  resetPassword = (body: ResetPasswordRequest) =>
+    this.request<void>('POST', '/auth/reset-password', { body, auth: false });
+  changePassword = (body: ChangePasswordRequest) =>
+    this.request<void>('POST', '/auth/change-password', { body });
+  verifyEmail = (token: string) =>
+    this.request<void>('POST', '/auth/verify-email', { body: { token }, auth: false });
   resendVerification = () => this.request<void>('POST', '/auth/resend-verification');
   me = () => this.request('GET', '/me', { schema: meResponse });
 
@@ -187,28 +221,59 @@ export class ApiClient {
   // Empresa, miembros e invitaciones
   // ---------------------------------------------------------------------------------------------
   getTenant = () => this.request('GET', '/tenants/current', { schema: tenantView });
-  updateTenant = (body: UpdateTenantRequest) => this.request('PATCH', '/tenants/current', { body, schema: tenantView });
+  updateTenant = (body: UpdateTenantRequest) =>
+    this.request('PATCH', '/tenants/current', { body, schema: tenantView });
 
   listMembers = (q: { cursor?: string; limit?: number } = {}) =>
     this.request('GET', '/tenants/current/members', { query: q, schema: pageOf(memberView) });
   updateMember = (id: string, body: UpdateMemberRequest) =>
-    this.request('PATCH', `/tenants/current/members/${encodeURIComponent(id)}`, { body, schema: memberView });
+    this.request('PATCH', `/tenants/current/members/${encodeURIComponent(id)}`, {
+      body,
+      schema: memberView,
+    });
   listRoles = () => this.request('GET', '/tenants/current/roles', { schema: z.array(roleView) });
 
   createInvitation = (body: CreateInvitationRequest) =>
-    this.request('POST', '/tenants/current/invitations', { body, schema: createInvitationResponse });
-  listInvitations = () => this.request('GET', '/tenants/current/invitations', { schema: z.array(invitationView) });
+    this.request('POST', '/tenants/current/invitations', {
+      body,
+      schema: createInvitationResponse,
+    });
+  listInvitations = () =>
+    this.request('GET', '/tenants/current/invitations', { schema: z.array(invitationView) });
   resendInvitation = (id: string) =>
-    this.request('POST', `/tenants/current/invitations/${encodeURIComponent(id)}/resend`, { schema: createInvitationResponse });
-  revokeInvitation = (id: string) => this.request<void>('DELETE', `/tenants/current/invitations/${encodeURIComponent(id)}`);
+    this.request('POST', `/tenants/current/invitations/${encodeURIComponent(id)}/resend`, {
+      schema: createInvitationResponse,
+    });
+  revokeInvitation = (id: string) =>
+    this.request<void>('DELETE', `/tenants/current/invitations/${encodeURIComponent(id)}`);
 
-  previewInvitation = (token: string) => this.request('POST', '/invitations/preview', { body: { token }, auth: false, schema: invitationPreview });
+  previewInvitation = (token: string) =>
+    this.request('POST', '/invitations/preview', {
+      body: { token },
+      auth: false,
+      schema: invitationPreview,
+    });
   async acceptInvitation(body: AcceptInvitationRequest) {
-    const r = await this.request('POST', '/invitations/accept', { body, auth: false, schema: acceptInvitationResponse });
+    const r = await this.request('POST', '/invitations/accept', {
+      body,
+      auth: false,
+      schema: acceptInvitationResponse,
+    });
     if (r.auth) this.accessToken = r.auth.accessToken;
     return r;
   }
 
-  listAuditLogs = (q: { cursor?: string; limit?: number; action?: string; entityType?: string; entityId?: string; actorId?: string; from?: string; to?: string } = {}) =>
+  listAuditLogs = (
+    q: {
+      cursor?: string;
+      limit?: number;
+      action?: string;
+      entityType?: string;
+      entityId?: string;
+      actorId?: string;
+      from?: string;
+      to?: string;
+    } = {},
+  ) =>
     this.request('GET', '/tenants/current/audit-logs', { query: q, schema: pageOf(auditLogView) });
 }

@@ -45,7 +45,9 @@ describe('salud y formato de errores', () => {
   it('acepta un x-request-id válido del cliente y descarta uno inseguro', async () => {
     const ok = await http(app).get('/health').set('x-request-id', 'trace-abc-12345');
     expect(ok.headers['x-request-id']).toBe('trace-abc-12345');
-    const bad = await http(app).get('/health').set('x-request-id', 'id con espacios <script>alert(1)</script>');
+    const bad = await http(app)
+      .get('/health')
+      .set('x-request-id', 'id con espacios <script>alert(1)</script>');
     expect(bad.headers['x-request-id']).not.toContain('script');
     expect(bad.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/); // se reemplazó por un uuid
   });
@@ -70,15 +72,28 @@ describe('registro', () => {
     expect(me.body.permissions).toHaveLength(PERMISSION_KEYS.length);
     expect(me.body.tenant.id).toBe(r.tenantId);
 
-    const roles = await owner.query(`SELECT key FROM roles WHERE tenant_id=$1 ORDER BY key`, [r.tenantId]);
-    expect(roles.rows.map((x) => x.key)).toEqual(['admin', 'manager', 'owner', 'professional', 'receptionist']);
+    const roles = await owner.query(`SELECT key FROM roles WHERE tenant_id=$1 ORDER BY key`, [
+      r.tenantId,
+    ]);
+    expect(roles.rows.map((x) => x.key)).toEqual([
+      'admin',
+      'manager',
+      'owner',
+      'professional',
+      'receptionist',
+    ]);
   });
 
   it('el refresh token viaja SOLO en cookie HttpOnly y nunca en el JSON', async () => {
-    const res = await http(app)
-      .post('/api/v1/auth/register')
-      .send({ email: 'cookie@example.test', password: PASSWORD, fullName: 'Ana Pérez', businessName: 'Cookie Shop' });
-    const cookie = (res.headers['set-cookie'] as unknown as string[]).find((c) => c.startsWith('rp_refresh='))!;
+    const res = await http(app).post('/api/v1/auth/register').send({
+      email: 'cookie@example.test',
+      password: PASSWORD,
+      fullName: 'Ana Pérez',
+      businessName: 'Cookie Shop',
+    });
+    const cookie = (res.headers['set-cookie'] as unknown as string[]).find((c) =>
+      c.startsWith('rp_refresh='),
+    )!;
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/SameSite=Lax/i);
     expect(cookie).toMatch(/Path=\/api\/v1\/auth/);
@@ -102,14 +117,22 @@ describe('registro', () => {
     expect(dup.status).toBe(409);
     expect(dup.body.code).toBe('EMAIL_TAKEN');
 
-    const reserved = await http(app)
-      .post('/api/v1/auth/register')
-      .send({ email: 'r@example.test', password: PASSWORD, fullName: 'Rosa Ruiz', businessName: 'Reservado', slug: 'admin' });
+    const reserved = await http(app).post('/api/v1/auth/register').send({
+      email: 'r@example.test',
+      password: PASSWORD,
+      fullName: 'Rosa Ruiz',
+      businessName: 'Reservado',
+      slug: 'admin',
+    });
     expect(reserved.body.code).toBe('SLUG_TAKEN');
 
-    const taken = await http(app)
-      .post('/api/v1/auth/register')
-      .send({ email: 't@example.test', password: PASSWORD, fullName: 'Tomás Toro', businessName: 'Tomado', slug: 'mi-slug-unico' });
+    const taken = await http(app).post('/api/v1/auth/register').send({
+      email: 't@example.test',
+      password: PASSWORD,
+      fullName: 'Tomás Toro',
+      businessName: 'Tomado',
+      slug: 'mi-slug-unico',
+    });
     expect(taken.body.code).toBe('SLUG_TAKEN');
   });
 
@@ -120,12 +143,16 @@ describe('registro', () => {
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('VALIDATION_ERROR');
     const paths = res.body.errors.map((e: { path: string }) => e.path);
-    expect(paths).toEqual(expect.arrayContaining(['email', 'password', 'fullName', 'businessName']));
+    expect(paths).toEqual(
+      expect.arrayContaining(['email', 'password', 'fullName', 'businessName']),
+    );
   });
 
   it('no registra nada si falla a mitad (transacción atómica)', async () => {
     const before = await owner.query(`SELECT count(*)::int AS n FROM users`);
-    await http(app).post('/api/v1/auth/register').send({ email: 'x@example.test', password: 'corta' });
+    await http(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'x@example.test', password: 'corta' });
     const after = await owner.query(`SELECT count(*)::int AS n FROM users`);
     expect(after.rows[0].n).toBe(before.rows[0].n);
   });
@@ -139,7 +166,9 @@ describe('registro', () => {
 
   it('deja auditoría tenant.created en la misma transacción', async () => {
     const r = await register(app);
-    const rows = await owner.query(`SELECT action, actor_id FROM audit_logs WHERE tenant_id=$1`, [r.tenantId]);
+    const rows = await owner.query(`SELECT action, actor_id FROM audit_logs WHERE tenant_id=$1`, [
+      r.tenantId,
+    ]);
     expect(rows.rows).toEqual([{ action: 'tenant.created', actor_id: r.body.user.id }]);
   });
 });
@@ -202,7 +231,9 @@ describe('tokens de acceso', () => {
       aud: 'reservepro-api',
       exp: Math.floor(Date.now() / 1000) + 600,
     })}.`;
-    expect((await http(app).get('/api/v1/me').set('Authorization', `Bearer ${forged}`)).status).toBe(401);
+    expect(
+      (await http(app).get('/api/v1/me').set('Authorization', `Bearer ${forged}`)).status,
+    ).toBe(401);
   });
 
   it('un token bien firmado pero con claims que no son UUID da 401, no 500 (regresión)', async () => {
@@ -229,14 +260,18 @@ describe('tokens de acceso', () => {
       .setAudience('reservepro-api')
       .setExpirationTime('10m')
       .sign(new TextEncoder().encode('otro-secreto-distinto-de-32-caracteres-xx'));
-    expect((await http(app).get('/api/v1/me').set('Authorization', `Bearer ${fake}`)).status).toBe(401);
+    expect((await http(app).get('/api/v1/me').set('Authorization', `Bearer ${fake}`)).status).toBe(
+      401,
+    );
   });
 });
 
 describe('refresh con rotación y detección de reutilización', () => {
   it('exige la cabecera anti-CSRF', async () => {
     const r = await register(app);
-    const res = await http(app).post('/api/v1/auth/refresh').set('Cookie', `rp_refresh=${r.refresh}`);
+    const res = await http(app)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', `rp_refresh=${r.refresh}`);
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('CSRF_REJECTED');
   });
@@ -251,7 +286,9 @@ describe('refresh con rotación y detección de reutilización', () => {
     const next = cookieValue(res.headers['set-cookie'])!;
     expect(next).toBeTruthy();
     expect(next).not.toBe(r.refresh);
-    const me = await http(app).get('/api/v1/me').set('Authorization', `Bearer ${res.body.accessToken}`);
+    const me = await http(app)
+      .get('/api/v1/me')
+      .set('Authorization', `Bearer ${res.body.accessToken}`);
     expect(me.status).toBe(200);
   });
 
@@ -276,14 +313,19 @@ describe('refresh con rotación y detección de reutilización', () => {
       .set('x-rp-csrf', '1')
       .set('Cookie', `rp_refresh=${newest}`);
     expect(legit.status).toBe(401);
-    const me = await http(app).get('/api/v1/me').set('Authorization', `Bearer ${rotated.body.accessToken}`);
+    const me = await http(app)
+      .get('/api/v1/me')
+      .set('Authorization', `Bearer ${rotated.body.accessToken}`);
     expect(me.status).toBe(401);
   });
 
   it('dos refresh simultáneos con el mismo token: no pueden ganar ambos', async () => {
     const r = await register(app);
     const call = () =>
-      http(app).post('/api/v1/auth/refresh').set('x-rp-csrf', '1').set('Cookie', `rp_refresh=${r.refresh}`);
+      http(app)
+        .post('/api/v1/auth/refresh')
+        .set('x-rp-csrf', '1')
+        .set('Cookie', `rp_refresh=${r.refresh}`);
     const results = await Promise.all([call(), call(), call()]);
     expect(results.filter((x) => x.status === 200).length).toBeLessThanOrEqual(1);
   });
@@ -302,7 +344,10 @@ describe('logout', () => {
     const r = await register(app);
     expect((await http(app).get('/api/v1/me').set(r.auth)).status).toBe(200);
 
-    const out = await http(app).post('/api/v1/auth/logout').set('x-rp-csrf', '1').set('Cookie', `rp_refresh=${r.refresh}`);
+    const out = await http(app)
+      .post('/api/v1/auth/logout')
+      .set('x-rp-csrf', '1')
+      .set('Cookie', `rp_refresh=${r.refresh}`);
     expect(out.status).toBe(204);
 
     expect((await http(app).get('/api/v1/me').set(r.auth)).status).toBe(401);
@@ -325,10 +370,10 @@ describe('varias empresas y cambio de empresa activa', () => {
     const a = await register(app);
     const b = await register(app);
     const userA = a.body.user.id;
-    await owner.query(`INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2)`, [
-      b.tenantId,
-      userA,
-    ]);
+    await owner.query(
+      `INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2)`,
+      [b.tenantId, userA],
+    );
 
     const l = await login(app, a.email);
     expect(l.body.memberships).toHaveLength(2);
@@ -347,14 +392,20 @@ describe('varias empresas y cambio de empresa activa', () => {
     await addMembership(owner, { tenantId: b.tenantId, userId: a.body.user.id, roleKey: 'admin' });
     const l = await login(app, a.email);
 
-    const sw = await http(app).post('/api/v1/auth/switch-tenant').set(l.auth).send({ tenantId: b.tenantId });
+    const sw = await http(app)
+      .post('/api/v1/auth/switch-tenant')
+      .set(l.auth)
+      .send({ tenantId: b.tenantId });
     expect(sw.status).toBe(200);
     const cur = await http(app)
       .get('/api/v1/tenants/current')
       .set('Authorization', `Bearer ${sw.body.accessToken}`);
     expect(cur.body.id).toBe(b.tenantId);
 
-    const foreign = await http(app).post('/api/v1/auth/switch-tenant').set(l.auth).send({ tenantId: c.tenantId });
+    const foreign = await http(app)
+      .post('/api/v1/auth/switch-tenant')
+      .set(l.auth)
+      .send({ tenantId: c.tenantId });
     expect(foreign.status).toBe(403);
   });
 });
@@ -363,12 +414,15 @@ describe('RBAC', () => {
   it('un profesional lee la empresa pero no puede modificarla', async () => {
     const a = await register(app);
     const p = await register(app); // otro usuario que será profesional en la empresa de A
-    await owner.query(`INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2)`, [
-      a.tenantId,
-      p.body.user.id,
-    ]);
+    await owner.query(
+      `INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2)`,
+      [a.tenantId, p.body.user.id],
+    );
     const mId = (
-      await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1 AND user_id=$2`, [a.tenantId, p.body.user.id])
+      await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1 AND user_id=$2`, [
+        a.tenantId,
+        p.body.user.id,
+      ])
     ).rows[0].id;
     await owner.query(
       `INSERT INTO membership_roles(tenant_id,membership_id,role_id) SELECT $1,$2,id FROM roles WHERE tenant_id=$1 AND key='professional'`,
@@ -377,7 +431,10 @@ describe('RBAC', () => {
 
     const l = await login(app, p.email, { tenantId: a.tenantId });
     expect((await http(app).get('/api/v1/tenants/current').set(l.auth)).status).toBe(200);
-    const patch = await http(app).patch('/api/v1/tenants/current').set(l.auth).send({ name: 'Hackeado' });
+    const patch = await http(app)
+      .patch('/api/v1/tenants/current')
+      .set(l.auth)
+      .send({ name: 'Hackeado' });
     expect(patch.status).toBe(403);
     expect(patch.body.code).toBe('FORBIDDEN');
     const name = await owner.query(`SELECT name FROM tenants WHERE id=$1`, [a.tenantId]);
@@ -387,7 +444,9 @@ describe('RBAC', () => {
   it('desactivar la membresía surte efecto inmediato, sin esperar a que expire el token', async () => {
     const r = await register(app);
     expect((await http(app).get('/api/v1/tenants/current').set(r.auth)).status).toBe(200);
-    await owner.query(`UPDATE tenant_memberships SET status='disabled' WHERE tenant_id=$1`, [r.tenantId]);
+    await owner.query(`UPDATE tenant_memberships SET status='disabled' WHERE tenant_id=$1`, [
+      r.tenantId,
+    ]);
     expect((await http(app).get('/api/v1/tenants/current').set(r.auth)).status).toBe(401);
   });
 
@@ -409,13 +468,22 @@ describe('aislamiento entre empresas a través de la API', () => {
     const a = await register(app, { businessName: 'Empresa Alfa' });
     const b = await register(app, { businessName: 'Empresa Beta' });
 
-    expect((await http(app).get('/api/v1/tenants/current').set(a.auth)).body.name).toBe('Empresa Alfa');
-    expect((await http(app).get('/api/v1/tenants/current').set(b.auth)).body.name).toBe('Empresa Beta');
+    expect((await http(app).get('/api/v1/tenants/current').set(a.auth)).body.name).toBe(
+      'Empresa Alfa',
+    );
+    expect((await http(app).get('/api/v1/tenants/current').set(b.auth)).body.name).toBe(
+      'Empresa Beta',
+    );
 
-    const patch = await http(app).patch('/api/v1/tenants/current').set(a.auth).send({ name: 'Alfa Renombrada' });
+    const patch = await http(app)
+      .patch('/api/v1/tenants/current')
+      .set(a.auth)
+      .send({ name: 'Alfa Renombrada' });
     expect(patch.status).toBe(200);
 
-    const names = await owner.query(`SELECT id, name FROM tenants WHERE id = ANY($1)`, [[a.tenantId, b.tenantId]]);
+    const names = await owner.query(`SELECT id, name FROM tenants WHERE id = ANY($1)`, [
+      [a.tenantId, b.tenantId],
+    ]);
     const byId = Object.fromEntries(names.rows.map((r) => [r.id, r.name]));
     expect(byId[a.tenantId]).toBe('Alfa Renombrada');
     expect(byId[b.tenantId]).toBe('Empresa Beta'); // B intacta
@@ -425,7 +493,9 @@ describe('aislamiento entre empresas a través de la API', () => {
          FROM audit_logs WHERE action='tenant.updated' AND tenant_id = ANY($1)`,
       [[a.tenantId, b.tenantId]],
     );
-    expect(audit.rows).toEqual([{ tenant_id: a.tenantId, antes: 'Empresa Alfa', despues: 'Alfa Renombrada' }]);
+    expect(audit.rows).toEqual([
+      { tenant_id: a.tenantId, antes: 'Empresa Alfa', despues: 'Alfa Renombrada' },
+    ]);
   });
 
   it('un token con tenant de OTRA empresa (credenciales cruzadas) es rechazado', async () => {
@@ -438,7 +508,8 @@ describe('aislamiento entre empresas a través de la API', () => {
     ).rows[0].id;
 
     // sid REAL de la sesión de A (se lee del payload de su token): el ataque es solo el tenant cruzado.
-    const sid = JSON.parse(Buffer.from(a.body.accessToken.split('.')[1]!, 'base64url').toString()).sid as string;
+    const sid = JSON.parse(Buffer.from(a.body.accessToken.split('.')[1]!, 'base64url').toString())
+      .sid as string;
 
     const forged = await new SignJWT({ sid, tid: b.tenantId, mid: bMembership })
       .setProtectedHeader({ alg: 'HS256' })
@@ -448,7 +519,9 @@ describe('aislamiento entre empresas a través de la API', () => {
       .setExpirationTime('10m')
       .sign(new TextEncoder().encode(process.env['JWT_ACCESS_SECRET']!));
 
-    const res = await http(app).get('/api/v1/tenants/current').set('Authorization', `Bearer ${forged}`);
+    const res = await http(app)
+      .get('/api/v1/tenants/current')
+      .set('Authorization', `Bearer ${forged}`);
     expect(res.status).toBe(401); // …con la membresía de B: la BD no la asocia a A
     expect(JSON.stringify(res.body)).not.toContain(b.tenantId);
   });
@@ -456,10 +529,13 @@ describe('aislamiento entre empresas a través de la API', () => {
   it('el cuerpo de la petición no puede cambiar de tenant ni forzar campos internos', async () => {
     const a = await register(app);
     const b = await register(app);
-    const res = await http(app)
-      .patch('/api/v1/tenants/current')
-      .set(a.auth)
-      .send({ name: 'Nombre Válido', id: b.tenantId, tenant_id: b.tenantId, status: 'cancelled', slug: 'pirata' });
+    const res = await http(app).patch('/api/v1/tenants/current').set(a.auth).send({
+      name: 'Nombre Válido',
+      id: b.tenantId,
+      tenant_id: b.tenantId,
+      status: 'cancelled',
+      slug: 'pirata',
+    });
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(a.tenantId);
     const row = await owner.query(`SELECT slug, status FROM tenants WHERE id=$1`, [a.tenantId]);
@@ -469,9 +545,16 @@ describe('aislamiento entre empresas a través de la API', () => {
 
   it('PATCH valida: vacío o zona horaria inválida => 400', async () => {
     const a = await register(app);
-    expect((await http(app).patch('/api/v1/tenants/current').set(a.auth).send({})).status).toBe(400);
+    expect((await http(app).patch('/api/v1/tenants/current').set(a.auth).send({})).status).toBe(
+      400,
+    );
     expect(
-      (await http(app).patch('/api/v1/tenants/current').set(a.auth).send({ timezone: 'Marte/Olympus' })).status,
+      (
+        await http(app)
+          .patch('/api/v1/tenants/current')
+          .set(a.auth)
+          .send({ timezone: 'Marte/Olympus' })
+      ).status,
     ).toBe(400);
   });
 });

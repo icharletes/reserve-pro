@@ -6,7 +6,11 @@ import request, { type Response } from 'supertest';
 import type { AuthResponse } from '@reservepro/contracts';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/bootstrap.js';
-import { EMAIL_PROVIDER, type EmailMessage, type EmailProvider } from '../src/platform/email/email.module.js';
+import {
+  EMAIL_PROVIDER,
+  type EmailMessage,
+  type EmailProvider,
+} from '../src/platform/email/email.module.js';
 
 export const PASSWORD = 'Str0ng-Passw0rd!';
 export type Auth = { Authorization: string };
@@ -82,7 +86,10 @@ function adminDb(): pg.Pool {
 }
 
 /** Espera (hasta 3 s) a que llegue un email a `to`; los correos se envían en segundo plano. */
-export async function waitForMail(to: string, match?: (m: EmailMessage) => boolean): Promise<EmailMessage> {
+export async function waitForMail(
+  to: string,
+  match?: (m: EmailMessage) => boolean,
+): Promise<EmailMessage> {
   const deadline = Date.now() + 3_000;
   for (;;) {
     const found = [...mailbox.sent].reverse().find((m) => m.to === to && (!match || match(m)));
@@ -94,7 +101,10 @@ export async function waitForMail(to: string, match?: (m: EmailMessage) => boole
 
 export const http = (app: INestApplication) => request(app.getHttpServer());
 
-export function cookieValue(setCookie: string[] | string | undefined, name = 'rp_refresh'): string | undefined {
+export function cookieValue(
+  setCookie: string[] | string | undefined,
+  name = 'rp_refresh',
+): string | undefined {
   const list = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
   const line = list.find((c) => c.startsWith(`${name}=`));
   if (!line) return undefined;
@@ -112,7 +122,13 @@ export interface Registered {
 
 export async function register(
   app: INestApplication,
-  overrides: Partial<{ email: string; businessName: string; slug: string; password: string; verified: boolean }> = {},
+  overrides: Partial<{
+    email: string;
+    businessName: string;
+    slug: string;
+    password: string;
+    verified: boolean;
+  }> = {},
 ): Promise<Registered> {
   const email = overrides.email ?? `user-${randomUUID().slice(0, 8)}@example.test`;
   const res = await http(app)
@@ -124,7 +140,8 @@ export async function register(
       businessName: overrides.businessName ?? `Negocio ${randomUUID().slice(0, 6)}`,
       ...(overrides.slug ? { slug: overrides.slug } : {}),
     });
-  if (res.status !== 201) throw new Error(`register falló: ${res.status} ${JSON.stringify(res.body)}`);
+  if (res.status !== 201)
+    throw new Error(`register falló: ${res.status} ${JSON.stringify(res.body)}`);
   const body = res.body as AuthResponse;
   // Por defecto el email queda verificado (la mayoría de las pruebas no tratan sobre eso).
   if (overrides.verified !== false) {
@@ -143,10 +160,19 @@ export async function login(
   app: INestApplication,
   email: string,
   extra: { tenantId?: string; password?: string } = {},
-): Promise<{ res: Response; body: AuthResponse; refresh: string | undefined; auth: { Authorization: string } }> {
+): Promise<{
+  res: Response;
+  body: AuthResponse;
+  refresh: string | undefined;
+  auth: { Authorization: string };
+}> {
   const res = await http(app)
     .post('/api/v1/auth/login')
-    .send({ email, password: extra.password ?? PASSWORD, ...(extra.tenantId ? { tenantId: extra.tenantId } : {}) });
+    .send({
+      email,
+      password: extra.password ?? PASSWORD,
+      ...(extra.tenantId ? { tenantId: extra.tenantId } : {}),
+    });
   return {
     res,
     body: res.body as AuthResponse,

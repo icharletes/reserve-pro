@@ -10,7 +10,8 @@ import pg from 'pg';
 
 function need(name: string): string {
   const v = process.env[name];
-  if (!v) throw new Error(`Falta ${name}. Copia .env.example a .env y levanta Docker (pnpm db:up).`);
+  if (!v)
+    throw new Error(`Falta ${name}. Copia .env.example a .env y levanta Docker (pnpm db:up).`);
   return v;
 }
 
@@ -39,7 +40,10 @@ export function testDatabaseUrls(dbName: string): TestDatabaseUrls {
 }
 
 /** Borra y recrea `dbName`, y aplica todas las migraciones en orden. */
-export async function recreateTestDatabase(dbName: string, migrationsDir: string): Promise<TestDatabaseUrls> {
+export async function recreateTestDatabase(
+  dbName: string,
+  migrationsDir: string,
+): Promise<TestDatabaseUrls> {
   if (!/^[a-z_][a-z0-9_]*$/.test(dbName) || !dbName.endsWith('_test')) {
     // Evita borrar por error una base real: el nombre debe terminar en _test.
     throw new Error(`Nombre de base de pruebas inválido: ${dbName}`);
@@ -52,6 +56,7 @@ export async function recreateTestDatabase(dbName: string, migrationsDir: string
   } catch (err) {
     throw new Error(
       `No se pudo conectar a PostgreSQL (${(err as Error).message}). ¿Docker está corriendo? Ejecuta: pnpm db:up`,
+      { cause: err },
     );
   }
   await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);

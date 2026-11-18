@@ -8,7 +8,9 @@ import { TokenService } from './platform/auth/token.service.js';
 
 describe('uuidv7', () => {
   it('tiene formato UUID v7 válido', () => {
-    expect(uuidv7()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(uuidv7()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
   it('es ordenable por tiempo', () => {
     const ids = [1000, 2000, 3000, 4000].map((t) => uuidv7(t));
@@ -55,12 +57,20 @@ describe('plantillas de roles', () => {
   it('el profesional no puede escribir catálogo, ver todas las reservas ni gestionar la empresa', () => {
     const pro = ROLE_TEMPLATES.find((t) => t.key === 'professional')!;
     expect(pro.permissions).toContain('reservations:read:own');
-    for (const forbidden of ['reservations:read', 'services:write', 'tenant:update', 'billing:manage', 'customers:erase']) {
+    for (const forbidden of [
+      'reservations:read',
+      'services:write',
+      'tenant:update',
+      'billing:manage',
+      'customers:erase',
+    ]) {
       expect(pro.permissions).not.toContain(forbidden);
     }
   });
   it('solo el propietario puede gestionar facturación', () => {
-    const withBilling = ROLE_TEMPLATES.filter((t) => t.permissions.includes('billing:manage')).map((t) => t.key);
+    const withBilling = ROLE_TEMPLATES.filter((t) => t.permissions.includes('billing:manage')).map(
+      (t) => t.key,
+    );
     expect(withBilling).toEqual(['owner']);
   });
   it('el catálogo tiene descripción para cada permiso', () => {
@@ -85,24 +95,29 @@ describe('validación de entorno', () => {
     ).toThrow(/producción/);
   });
   it('parsea la lista de orígenes CORS', () => {
-    expect(loadEnv({ ...base, CORS_ORIGINS: 'http://a.test, http://b.test ,' }).CORS_ORIGINS).toEqual([
-      'http://a.test',
-      'http://b.test',
-    ]);
+    expect(
+      loadEnv({ ...base, CORS_ORIGINS: 'http://a.test, http://b.test ,' }).CORS_ORIGINS,
+    ).toEqual(['http://a.test', 'http://b.test']);
   });
 });
 
 describe('refresh token', () => {
   it('es aleatorio, de 256 bits, y solo se guarda su hash', () => {
     const svc = new TokenService({
-      env: { JWT_ACCESS_SECRET: 'a'.repeat(40), ACCESS_TOKEN_TTL_SECONDS: 900, REFRESH_TOKEN_TTL_DAYS: 30 },
+      env: {
+        JWT_ACCESS_SECRET: 'a'.repeat(40),
+        ACCESS_TOKEN_TTL_SECONDS: 900,
+        REFRESH_TOKEN_TTL_DAYS: 30,
+      },
     } as never);
     const a = svc.generateRefreshToken();
     const b = svc.generateRefreshToken();
     expect(a.token).not.toBe(b.token);
     expect(Buffer.from(a.token, 'base64url')).toHaveLength(32);
     expect(a.hash).toHaveLength(32);
-    expect(Buffer.from(a.hash).equals(Buffer.from(TokenService.hashRefreshToken(a.token)))).toBe(true);
+    expect(Buffer.from(a.hash).equals(Buffer.from(TokenService.hashRefreshToken(a.token)))).toBe(
+      true,
+    );
     expect(Buffer.from(a.hash).toString('base64url')).not.toBe(a.token);
   });
 });

@@ -81,7 +81,9 @@ export const updateMemberRequest = z
     roleKeys: z.array(z.string().min(1).max(50)).min(1).max(5),
   })
   .partial()
-  .refine((v) => v.status !== undefined || v.roleKeys !== undefined, { message: 'Debe indicar status o roleKeys' });
+  .refine((v) => v.status !== undefined || v.roleKeys !== undefined, {
+    message: 'Debe indicar status o roleKeys',
+  });
 export type UpdateMemberRequest = z.infer<typeof updateMemberRequest>;
 
 export const roleView = z.object({

@@ -21,11 +21,17 @@ const url = '/api/v1/tenants/current/audit-logs';
 describe('consulta de auditoría', () => {
   it('lista lo más reciente primero, con el nombre de quien actuó y el antes/después', async () => {
     const o = await register(app, { businessName: 'Auditada SA' });
-    await http(app).patch('/api/v1/tenants/current').set(o.auth).send({ name: 'Auditada Renovada' });
+    await http(app)
+      .patch('/api/v1/tenants/current')
+      .set(o.auth)
+      .send({ name: 'Auditada Renovada' });
 
     const res = await http(app).get(url).set(o.auth);
     expect(res.status).toBe(200);
-    expect(res.body.items.map((i: { action: string }) => i.action)).toEqual(['tenant.updated', 'tenant.created']);
+    expect(res.body.items.map((i: { action: string }) => i.action)).toEqual([
+      'tenant.updated',
+      'tenant.created',
+    ]);
     const updated = res.body.items[0];
     expect(updated.actorName).toBe('Persona de Prueba');
     expect(updated.before.name).toBe('Auditada SA');
@@ -38,21 +44,35 @@ describe('consulta de auditoría', () => {
     await http(app).patch('/api/v1/tenants/current').set(o.auth).send({ name: 'Otro Nombre' });
     const byAction = await http(app).get(`${url}?action=tenant.created`).set(o.auth);
     expect(byAction.body.items).toHaveLength(1);
-    const byEntity = await http(app).get(`${url}?entityType=tenant&entityId=${o.tenantId}`).set(o.auth);
+    const byEntity = await http(app)
+      .get(`${url}?entityType=tenant&entityId=${o.tenantId}`)
+      .set(o.auth);
     expect(byEntity.body.items).toHaveLength(2);
     const future = new Date(Date.now() + 86_400_000).toISOString();
-    expect((await http(app).get(`${url}?from=${encodeURIComponent(future)}`).set(o.auth)).body.items).toEqual([]);
+    expect(
+      (
+        await http(app)
+          .get(`${url}?from=${encodeURIComponent(future)}`)
+          .set(o.auth)
+      ).body.items,
+    ).toEqual([]);
     expect((await http(app).get(`${url}?from=ayer`).set(o.auth)).status).toBe(400);
   });
 
   it('pagina por cursor sin repetir ni perder entradas', async () => {
     const o = await register(app);
-    for (let i = 0; i < 5; i++) await http(app).patch('/api/v1/tenants/current').set(o.auth).send({ name: `Nombre ${i}` });
+    for (let i = 0; i < 5; i++)
+      await http(app)
+        .patch('/api/v1/tenants/current')
+        .set(o.auth)
+        .send({ name: `Nombre ${i}` });
     const seen: string[] = [];
     let cursor: string | null = null;
     let pages = 0;
     do {
-      const res: Response = await http(app).get(`${url}?limit=2${cursor ? `&cursor=${cursor}` : ''}`).set(o.auth);
+      const res: Response = await http(app)
+        .get(`${url}?limit=2${cursor ? `&cursor=${cursor}` : ''}`)
+        .set(o.auth);
       seen.push(...res.body.items.map((i: { id: string }) => i.id));
       cursor = res.body.nextCursor;
       pages++;
@@ -86,9 +106,19 @@ describe('consulta de auditoría', () => {
   it('registra la actividad de invitaciones y miembros', async () => {
     const o = await register(app);
     const m = await joinTenant(app, owner, o.tenantId, 'professional');
-    await http(app).post('/api/v1/tenants/current/invitations').set(o.auth).send({ email: 'nuevo-aud@example.test', roleKey: 'receptionist' });
-    await http(app).patch(`/api/v1/tenants/current/members/${m.membershipId}`).set(o.auth).send({ status: 'disabled' });
-    const actions = (await http(app).get(url).set(o.auth)).body.items.map((i: { action: string }) => i.action);
-    expect(actions).toEqual(expect.arrayContaining(['invitation.created', 'member.updated', 'tenant.created']));
+    await http(app)
+      .post('/api/v1/tenants/current/invitations')
+      .set(o.auth)
+      .send({ email: 'nuevo-aud@example.test', roleKey: 'receptionist' });
+    await http(app)
+      .patch(`/api/v1/tenants/current/members/${m.membershipId}`)
+      .set(o.auth)
+      .send({ status: 'disabled' });
+    const actions = (await http(app).get(url).set(o.auth)).body.items.map(
+      (i: { action: string }) => i.action,
+    );
+    expect(actions).toEqual(
+      expect.arrayContaining(['invitation.created', 'member.updated', 'tenant.created']),
+    );
   });
 });

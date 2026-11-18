@@ -27,7 +27,13 @@ export function configureApp(app: INestApplication): void {
   app.enableCors({
     origin: config.env.CORS_ORIGINS,
     credentials: true,
-    allowedHeaders: ['content-type', 'authorization', 'x-request-id', 'x-rp-csrf', 'idempotency-key'],
+    allowedHeaders: [
+      'content-type',
+      'authorization',
+      'x-request-id',
+      'x-rp-csrf',
+      'idempotency-key',
+    ],
     exposedHeaders: ['x-request-id'],
     maxAge: 600,
   });

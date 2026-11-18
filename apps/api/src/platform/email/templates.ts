@@ -21,7 +21,10 @@ export interface InvitationEmailData {
 
 export function renderInvitationEmail(d: InvitationEmailData): EmailMessage {
   // El asunto es texto plano: se eliminan saltos de línea para impedir inyección de cabeceras.
-  const subject = `${d.inviterName} te invitó a ${d.tenantName} en ReservePro`.replace(/[\r\n]+/g, ' ');
+  const subject = `${d.inviterName} te invitó a ${d.tenantName} en ReservePro`.replace(
+    /[\r\n]+/g,
+    ' ',
+  );
   const text = [
     `Hola,`,
     ``,

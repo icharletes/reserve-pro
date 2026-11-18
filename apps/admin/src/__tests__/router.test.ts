@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createMemoryHistory } from 'vue-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { apiMock, auth, ids, me } from './helpers';
 
 vi.mock('../api', () => ({ api: apiMock, setAuthLostHandler: () => undefined }));
@@ -14,7 +14,9 @@ async function setup(session: Session, permissions: string[] = ['tenant:read']) 
   resetBootstrapForTests();
   for (const fn of Object.values(apiMock)) fn.mockReset();
   apiMock.me.mockResolvedValue(me(permissions));
-  apiMock.restoreSession.mockResolvedValue(session === 'none' ? null : auth(session === 'tenant' ? ids.T1 : null));
+  apiMock.restoreSession.mockResolvedValue(
+    session === 'none' ? null : auth(session === 'tenant' ? ids.T1 : null),
+  );
   const router = createAppRouter(createMemoryHistory());
   await useAuthStore().bootstrap();
   return router;

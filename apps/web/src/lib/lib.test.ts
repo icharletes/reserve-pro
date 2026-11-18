@@ -9,10 +9,19 @@ describe('parsePublicSlug', () => {
     ['spa-lago-12', 'spa-lago-12'],
   ])('%j -> %j', (raw, expected) => expect(parsePublicSlug(raw)).toBe(expected));
 
-  it.each([undefined, '', 'a', '-abc', 'abc-', 'con espacios', 'tilde-ñ', '../etc/passwd', 'a'.repeat(60), '<script>', 'x%00y'])(
-    'rechaza %j (formato inválido)',
-    (raw) => expect(parsePublicSlug(raw)).toBeNull(),
-  );
+  it.each([
+    undefined,
+    '',
+    'a',
+    '-abc',
+    'abc-',
+    'con espacios',
+    'tilde-ñ',
+    '../etc/passwd',
+    'a'.repeat(60),
+    '<script>',
+    'x%00y',
+  ])('rechaza %j (formato inválido)', (raw) => expect(parsePublicSlug(raw)).toBeNull());
 
   it.each(['admin', 'api', 'login', 'auth', 'webhooks', 'health', 'ADMIN', 'Api'])(
     'rechaza el nombre reservado del sistema %j',

@@ -1,0 +1,14 @@
+# Generados o de terceros: no se formatean a mano.
+node_modules
+dist
+.astro
+.turbo
+coverage
+pnpm-lock.yaml
+packages/database/src/generated
+packages/database/prisma/migrations
+# OpenAPI lo escribe el generador (JSON.stringify con 2 espacios); un test comprueba que coincide con el código.
+docs/api/openapi.json
+# Documentación y plantillas Astro: se editan a mano con su propio estilo.
+**/*.md
+**/*.astro

@@ -13,7 +13,10 @@ export interface CreateClientOptions {
  * (sujeto a RLS). Nunca usar el rol dueño (`rp_owner`) ni `rp_system` en el camino
  * de una request de tenant.
  */
-export function createPrismaClient(connectionString: string, options: CreateClientOptions = {}): PrismaClient {
+export function createPrismaClient(
+  connectionString: string,
+  options: CreateClientOptions = {},
+): PrismaClient {
   if (!connectionString) {
     throw new Error('createPrismaClient: connectionString vacío (¿falta DATABASE_URL?)');
   }
@@ -26,6 +29,9 @@ export function createPrismaClient(connectionString: string, options: CreateClie
  * publisher del outbox, resolución de webhooks por phone_number_id, expiración de holds
  * y consola SaaS. Está separado a propósito para que su uso sea visible en revisiones.
  */
-export function createSystemClient(connectionString: string, options: CreateClientOptions = {}): PrismaClient {
+export function createSystemClient(
+  connectionString: string,
+  options: CreateClientOptions = {},
+): PrismaClient {
   return createPrismaClient(connectionString, { max: options.max ?? 5 });
 }

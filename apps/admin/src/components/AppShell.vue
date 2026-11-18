@@ -21,7 +21,9 @@ async function logout() {
     </nav>
     <div class="topbar-right">
       <span class="tenant" :title="auth.user?.email">{{ auth.activeMembership?.tenantName }}</span>
-      <RouterLink v-if="auth.memberships.length > 1" to="/select-tenant">Cambiar empresa</RouterLink>
+      <RouterLink v-if="auth.memberships.length > 1" to="/select-tenant"
+        >Cambiar empresa</RouterLink
+      >
       <button type="button" class="link" @click="logout">Cerrar sesión</button>
     </div>
   </header>

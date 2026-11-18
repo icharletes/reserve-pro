@@ -18,18 +18,46 @@ export const auth = (activeTenantId: string | null = T1) => ({
 });
 
 export const me = (permissions: string[] = ['tenant:read']) => ({
-  user: { id: U1, email: 'ana@x.test', fullName: 'Ana Pérez', isPlatformAdmin: false, emailVerified: true },
-  tenant: { id: T1, name: 'Barbería Uno', slug: 'barberia-uno', timezone: 'America/Santiago', currency: 'CLP' },
+  user: {
+    id: U1,
+    email: 'ana@x.test',
+    fullName: 'Ana Pérez',
+    isPlatformAdmin: false,
+    emailVerified: true,
+  },
+  tenant: {
+    id: T1,
+    name: 'Barbería Uno',
+    slug: 'barberia-uno',
+    timezone: 'America/Santiago',
+    currency: 'CLP',
+  },
   membershipId: U1,
   roles: ['owner'],
   permissions,
 });
 
 const API_METHODS = [
-  'restoreSession', 'login', 'register', 'switchTenant', 'logout', 'me', 'forgotPassword', 'resetPassword',
-  'verifyEmail', 'resendVerification', 'previewInvitation', 'acceptInvitation', 'listMembers', 'listRoles',
-  'listInvitations', 'listAuditLogs',
+  'restoreSession',
+  'login',
+  'register',
+  'switchTenant',
+  'logout',
+  'me',
+  'forgotPassword',
+  'resetPassword',
+  'verifyEmail',
+  'resendVerification',
+  'previewInvitation',
+  'acceptInvitation',
+  'listMembers',
+  'listRoles',
+  'listInvitations',
+  'listAuditLogs',
 ] as const;
 
 /** Doble del módulo `../api`: cada prueba ajusta lo que necesita. */
-export const apiMock = Object.fromEntries(API_METHODS.map((m) => [m, vi.fn()])) as Record<(typeof API_METHODS)[number], Mock>;
+export const apiMock = Object.fromEntries(API_METHODS.map((m) => [m, vi.fn()])) as Record<
+  (typeof API_METHODS)[number],
+  Mock
+>;

@@ -28,17 +28,36 @@ async function submit() {
 <template>
   <h1>Elige una contraseña nueva</h1>
   <AlertBox v-if="!token" kind="error">
-    El enlace no es válido. Solicita uno nuevo desde <RouterLink to="/forgot-password">recuperar contraseña</RouterLink>.
+    El enlace no es válido. Solicita uno nuevo desde
+    <RouterLink to="/forgot-password">recuperar contraseña</RouterLink>.
   </AlertBox>
   <AlertBox v-else-if="done" kind="success">
-    Listo: tu contraseña fue actualizada y cerramos tus otras sesiones. <RouterLink to="/login">Inicia sesión</RouterLink>.
+    Listo: tu contraseña fue actualizada y cerramos tus otras sesiones.
+    <RouterLink to="/login">Inicia sesión</RouterLink>.
   </AlertBox>
   <template v-else>
     <AlertBox v-if="error" kind="error">{{ error }}</AlertBox>
     <form class="card" novalidate @submit.prevent="submit">
-      <FormField v-model="password" label="Contraseña nueva" type="password" autocomplete="new-password" required hint="Mínimo 10 caracteres." :error="fieldErrors['password']" />
-      <FormField v-model="confirm" label="Repite la contraseña" type="password" autocomplete="new-password" required :error="mismatch ? 'Las contraseñas no coinciden.' : undefined" />
-      <button class="primary" type="submit" :disabled="loading || !password || !confirm">{{ loading ? 'Guardando…' : 'Guardar contraseña' }}</button>
+      <FormField
+        v-model="password"
+        label="Contraseña nueva"
+        type="password"
+        autocomplete="new-password"
+        required
+        hint="Mínimo 10 caracteres."
+        :error="fieldErrors['password']"
+      />
+      <FormField
+        v-model="confirm"
+        label="Repite la contraseña"
+        type="password"
+        autocomplete="new-password"
+        required
+        :error="mismatch ? 'Las contraseñas no coinciden.' : undefined"
+      />
+      <button class="primary" type="submit" :disabled="loading || !password || !confirm">
+        {{ loading ? 'Guardando…' : 'Guardar contraseña' }}
+      </button>
     </form>
   </template>
 </template>

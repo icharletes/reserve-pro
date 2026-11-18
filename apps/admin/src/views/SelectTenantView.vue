@@ -20,14 +20,28 @@ async function choose(tenantId: string) {
 <template>
   <h1>Elige una empresa</h1>
   <AlertBox v-if="error" kind="error">{{ error }}</AlertBox>
-  <p v-if="auth.memberships.length === 0" class="muted">Tu cuenta no pertenece a ninguna empresa activa.</p>
+  <p v-if="auth.memberships.length === 0" class="muted">
+    Tu cuenta no pertenece a ninguna empresa activa.
+  </p>
   <ul class="card" style="list-style: none; padding: 0.5rem 1.25rem">
     <li v-for="m in auth.memberships" :key="m.tenantId" style="padding: 0.4rem 0">
-      <button type="button" :disabled="loading" :aria-current="m.tenantId === auth.activeTenantId ? 'true' : undefined" @click="choose(m.tenantId)">
+      <button
+        type="button"
+        :disabled="loading"
+        :aria-current="m.tenantId === auth.activeTenantId ? 'true' : undefined"
+        @click="choose(m.tenantId)"
+      >
         {{ m.tenantName }}
       </button>
       <span class="muted"> · {{ m.tenantSlug }}</span>
     </li>
   </ul>
-  <button v-if="auth.hasTenant" type="button" class="link" @click="router.push({ name: 'dashboard' })">Volver al panel</button>
+  <button
+    v-if="auth.hasTenant"
+    type="button"
+    class="link"
+    @click="router.push({ name: 'dashboard' })"
+  >
+    Volver al panel
+  </button>
 </template>

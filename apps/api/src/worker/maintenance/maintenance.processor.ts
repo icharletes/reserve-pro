@@ -1,4 +1,9 @@
-import { Inject, Injectable, type OnApplicationBootstrap, type OnModuleDestroy } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import type { Logger } from 'pino';
@@ -43,7 +48,9 @@ export class MaintenanceProcessor implements OnApplicationBootstrap, OnModuleDes
       ...base,
       concurrency: this.config.env.WORKER_CONCURRENCY,
     });
-    this.worker.on('failed', (job, err) => this.logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'job fallido'));
+    this.worker.on('failed', (job, err) =>
+      this.logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'job fallido'),
+    );
     this.worker.on('error', (err) => this.logger.error({ err: err.message }, 'error del worker'));
 
     // upsert => idempotente: con varias réplicas del worker el programador sigue siendo UNO.
@@ -52,10 +59,18 @@ export class MaintenanceProcessor implements OnApplicationBootstrap, OnModuleDes
       { pattern: '0 3 * * *', tz: 'UTC' },
       {
         name: JOB_PURGE_TOKENS,
-        opts: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 }, removeOnComplete: 50, removeOnFail: 200 },
+        opts: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 30_000 },
+          removeOnComplete: 50,
+          removeOnFail: 200,
+        },
       },
     );
-    this.logger.info({ queue: MAINTENANCE_QUEUE, prefix: this.prefix }, 'worker de mantenimiento listo');
+    this.logger.info(
+      { queue: MAINTENANCE_QUEUE, prefix: this.prefix },
+      'worker de mantenimiento listo',
+    );
   }
 
   /** Despachador por nombre de job. Un nombre desconocido falla (no se ignora en silencio). */

@@ -9,7 +9,9 @@ import { useAuthStore } from '../stores/auth';
 const auth = useAuthStore();
 const token = takeFragmentToken();
 const state = ref<'loading' | 'ok' | 'error'>(token ? 'loading' : 'error');
-const message = ref(token ? '' : 'El enlace no es válido. Pide que te lo reenviemos desde el panel.');
+const message = ref(
+  token ? '' : 'El enlace no es válido. Pide que te lo reenviemos desde el panel.',
+);
 
 onMounted(async () => {
   if (!token) return;
@@ -27,7 +29,13 @@ onMounted(async () => {
 <template>
   <h1>Verificación de email</h1>
   <p v-if="state === 'loading'" role="status">Verificando…</p>
-  <AlertBox v-else-if="state === 'ok'" kind="success">Tu email quedó verificado. ¡Gracias!</AlertBox>
+  <AlertBox v-else-if="state === 'ok'" kind="success"
+    >Tu email quedó verificado. ¡Gracias!</AlertBox
+  >
   <AlertBox v-else kind="error">{{ message }}</AlertBox>
-  <p><RouterLink :to="auth.isAuthenticated ? '/' : '/login'">{{ auth.isAuthenticated ? 'Ir al panel' : 'Iniciar sesión' }}</RouterLink></p>
+  <p>
+    <RouterLink :to="auth.isAuthenticated ? '/' : '/login'">{{
+      auth.isAuthenticated ? 'Ir al panel' : 'Iniciar sesión'
+    }}</RouterLink>
+  </p>
 </template>

@@ -21,7 +21,9 @@ async function submit() {
   });
   if (!ok) return;
   // Con varias empresas y ninguna activa, primero se elige; si no, se vuelve al destino pedido (solo rutas internas).
-  await router.push(auth.hasTenant ? safeRedirect(route.query['redirect']) : { name: 'select-tenant' });
+  await router.push(
+    auth.hasTenant ? safeRedirect(route.query['redirect']) : { name: 'select-tenant' },
+  );
 }
 </script>
 
@@ -29,8 +31,22 @@ async function submit() {
   <h1>Iniciar sesión</h1>
   <AlertBox v-if="error" kind="error">{{ error }}</AlertBox>
   <form class="card" novalidate @submit.prevent="submit">
-    <FormField v-model="email" label="Email" type="email" autocomplete="username" required :error="fieldErrors['email']" />
-    <FormField v-model="password" label="Contraseña" type="password" autocomplete="current-password" required :error="fieldErrors['password']" />
+    <FormField
+      v-model="email"
+      label="Email"
+      type="email"
+      autocomplete="username"
+      required
+      :error="fieldErrors['email']"
+    />
+    <FormField
+      v-model="password"
+      label="Contraseña"
+      type="password"
+      autocomplete="current-password"
+      required
+      :error="fieldErrors['password']"
+    />
     <button class="primary" type="submit" :disabled="loading || !email || !password">
       {{ loading ? 'Ingresando…' : 'Ingresar' }}
     </button>

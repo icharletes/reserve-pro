@@ -26,6 +26,13 @@ export class ApiError extends Error {
   }
 
   static fromProblem(status: number, body: Partial<Problem>, retryAfter?: number): ApiError {
-    return new ApiError(status, body.code ?? 'UNKNOWN', body.detail ?? body.title ?? 'Error', body.errors ?? [], body.requestId, retryAfter);
+    return new ApiError(
+      status,
+      body.code ?? 'UNKNOWN',
+      body.detail ?? body.title ?? 'Error',
+      body.errors ?? [],
+      body.requestId,
+      retryAfter,
+    );
   }
 }

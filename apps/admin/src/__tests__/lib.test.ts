@@ -54,16 +54,32 @@ describe('describeError', () => {
   it('traduce códigos conocidos', () => {
     expect(describeError(new ApiError(401, 'INVALID_CREDENTIALS', 'x'))).toMatch(/incorrectos/);
     expect(describeError(new ApiError(0, 'NETWORK_ERROR', 'x'))).toMatch(/conexión/);
-    expect(describeError(new ApiError(403, 'EMAIL_NOT_VERIFIED', 'x'))).toMatch(/Verifica tu email/);
+    expect(describeError(new ApiError(403, 'EMAIL_NOT_VERIFIED', 'x'))).toMatch(
+      /Verifica tu email/,
+    );
   });
   it('429 muestra el tiempo de espera en unidades legibles', () => {
-    expect(describeError(new ApiError(429, 'RATE_LIMITED', 'x', [], undefined, 30))).toContain('30 segundos');
-    expect(describeError(new ApiError(429, 'RATE_LIMITED', 'x', [], undefined, 600))).toContain('10 minutos');
-    expect(describeError(new ApiError(429, 'RATE_LIMITED', 'x', [], undefined, 7200))).toContain('2 horas');
+    expect(describeError(new ApiError(429, 'RATE_LIMITED', 'x', [], undefined, 30))).toContain(
+      '30 segundos',
+    );
+    expect(describeError(new ApiError(429, 'RATE_LIMITED', 'x', [], undefined, 600))).toContain(
+      '10 minutos',
+    );
+    expect(describeError(new ApiError(429, 'RATE_LIMITED', 'x', [], undefined, 7200))).toContain(
+      '2 horas',
+    );
     expect(describeError(new ApiError(429, 'RATE_LIMITED', 'x'))).toMatch(/un momento/);
   });
   it('un error 5xx NO muestra el detalle del servidor, solo el código de seguimiento', () => {
-    const msg = describeError(new ApiError(500, 'INTERNAL_ERROR', 'SELECT * FROM users falló en db-prod-3', [], 'req-abc-12345'));
+    const msg = describeError(
+      new ApiError(
+        500,
+        'INTERNAL_ERROR',
+        'SELECT * FROM users falló en db-prod-3',
+        [],
+        'req-abc-12345',
+      ),
+    );
     expect(msg).not.toContain('SELECT');
     expect(msg).not.toContain('db-prod');
     expect(msg).toContain('req-abc-12345');

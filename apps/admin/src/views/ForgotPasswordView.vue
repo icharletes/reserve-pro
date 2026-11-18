@@ -22,13 +22,23 @@ async function submit() {
   <h1>Recuperar contraseña</h1>
   <!-- El mensaje es el MISMO exista o no la cuenta: no revela qué emails están registrados. -->
   <AlertBox v-if="sent" kind="success">
-    Si existe una cuenta con ese email, te enviamos un enlace para elegir una contraseña nueva. Revisa tu correo.
+    Si existe una cuenta con ese email, te enviamos un enlace para elegir una contraseña nueva.
+    Revisa tu correo.
   </AlertBox>
   <template v-else>
     <AlertBox v-if="error" kind="error">{{ error }}</AlertBox>
     <form class="card" novalidate @submit.prevent="submit">
-      <FormField v-model="email" label="Email de tu cuenta" type="email" autocomplete="username" required :error="fieldErrors['email']" />
-      <button class="primary" type="submit" :disabled="loading || !email">{{ loading ? 'Enviando…' : 'Enviar enlace' }}</button>
+      <FormField
+        v-model="email"
+        label="Email de tu cuenta"
+        type="email"
+        autocomplete="username"
+        required
+        :error="fieldErrors['email']"
+      />
+      <button class="primary" type="submit" :disabled="loading || !email">
+        {{ loading ? 'Enviando…' : 'Enviar enlace' }}
+      </button>
     </form>
   </template>
   <p><RouterLink to="/login">Volver a iniciar sesión</RouterLink></p>

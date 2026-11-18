@@ -73,7 +73,13 @@ export const meResponse = z.object({
     emailVerified: z.boolean(),
   }),
   tenant: z
-    .object({ id: uuid, name: z.string(), slug: z.string(), timezone: z.string(), currency: z.string() })
+    .object({
+      id: uuid,
+      name: z.string(),
+      slug: z.string(),
+      timezone: z.string(),
+      currency: z.string(),
+    })
     .nullable(),
   membershipId: uuid.nullable(),
   roles: z.array(z.string()),

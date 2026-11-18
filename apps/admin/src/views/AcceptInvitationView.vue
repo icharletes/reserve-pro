@@ -34,7 +34,9 @@ async function accept() {
   const result = await run(() =>
     api.acceptInvitation({
       token,
-      ...(preview.value!.accountExists ? {} : { fullName: fullName.value.trim(), password: password.value }),
+      ...(preview.value!.accountExists
+        ? {}
+        : { fullName: fullName.value.trim(), password: password.value }),
     }),
   );
   if (!result) return;
@@ -52,24 +54,48 @@ async function accept() {
   <AlertBox v-if="loadError" kind="error">{{ loadError }}</AlertBox>
   <p v-else-if="!preview" role="status">Cargando invitación…</p>
   <AlertBox v-else-if="joined" kind="success">
-    Te uniste a <strong>{{ preview.tenantName }}</strong
-    >. <RouterLink to="/login">Inicia sesión</RouterLink> con tu contraseña de siempre.
+    Te uniste a <strong>{{ preview.tenantName }}</strong>.
+    <RouterLink to="/login">Inicia sesión</RouterLink> con tu contraseña de siempre.
   </AlertBox>
   <template v-else>
     <p>
-      Te invitaron a unirte a <strong>{{ preview.tenantName }}</strong> como <strong>{{ preview.roleName }}</strong
-      >.
+      Te invitaron a unirte a <strong>{{ preview.tenantName }}</strong> como
+      <strong>{{ preview.roleName }}</strong>.
     </p>
     <AlertBox v-if="error" kind="error">{{ error }}</AlertBox>
     <form class="card" novalidate @submit.prevent="accept">
       <FormField :model-value="preview.email" label="Email" type="email" disabled />
       <template v-if="!preview.accountExists">
-        <FormField v-model="fullName" label="Tu nombre" autocomplete="name" required :error="fieldErrors['fullName']" />
-        <FormField v-model="password" label="Crea una contraseña" type="password" autocomplete="new-password" required hint="Mínimo 10 caracteres." :error="fieldErrors['password']" />
+        <FormField
+          v-model="fullName"
+          label="Tu nombre"
+          autocomplete="name"
+          required
+          :error="fieldErrors['fullName']"
+        />
+        <FormField
+          v-model="password"
+          label="Crea una contraseña"
+          type="password"
+          autocomplete="new-password"
+          required
+          hint="Mínimo 10 caracteres."
+          :error="fieldErrors['password']"
+        />
       </template>
       <p v-else class="muted">Ya tienes una cuenta con este email: solo confirma para unirte.</p>
-      <button class="primary" type="submit" :disabled="loading || (!preview.accountExists && (!fullName || !password))">
-        {{ loading ? 'Procesando…' : preview.accountExists ? 'Unirme a la empresa' : 'Crear cuenta y unirme' }}
+      <button
+        class="primary"
+        type="submit"
+        :disabled="loading || (!preview.accountExists && (!fullName || !password))"
+      >
+        {{
+          loading
+            ? 'Procesando…'
+            : preview.accountExists
+              ? 'Unirme a la empresa'
+              : 'Crear cuenta y unirme'
+        }}
       </button>
     </form>
   </template>

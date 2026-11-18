@@ -17,18 +17,78 @@ declare module 'vue-router' {
 }
 
 export const routes: RouteRecordRaw[] = [
-  { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { guestOnly: true, title: 'Iniciar sesión' } },
-  { path: '/register', name: 'register', component: () => import('./views/RegisterView.vue'), meta: { guestOnly: true, title: 'Crear cuenta' } },
-  { path: '/forgot-password', name: 'forgot-password', component: () => import('./views/ForgotPasswordView.vue'), meta: { guestOnly: true, title: 'Recuperar contraseña' } },
-  { path: '/reset-password', name: 'reset-password', component: () => import('./views/ResetPasswordView.vue'), meta: { public: true, title: 'Nueva contraseña' } },
-  { path: '/verify-email', name: 'verify-email', component: () => import('./views/VerifyEmailView.vue'), meta: { public: true, title: 'Verificar email' } },
-  { path: '/accept-invitation', name: 'accept-invitation', component: () => import('./views/AcceptInvitationView.vue'), meta: { public: true, title: 'Aceptar invitación' } },
-  { path: '/select-tenant', name: 'select-tenant', component: () => import('./views/SelectTenantView.vue'), meta: { noTenant: true, title: 'Elegir empresa' } },
-  { path: '/', name: 'dashboard', component: () => import('./views/DashboardView.vue'), meta: { title: 'Inicio' } },
-  { path: '/members', name: 'members', component: () => import('./views/MembersView.vue'), meta: { permission: 'members:read', title: 'Equipo' } },
-  { path: '/audit', name: 'audit', component: () => import('./views/AuditView.vue'), meta: { permission: 'audit:read', title: 'Auditoría' } },
-  { path: '/forbidden', name: 'forbidden', component: () => import('./views/ForbiddenView.vue'), meta: { title: 'Sin acceso' } },
-  { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('./views/NotFoundView.vue'), meta: { public: true, title: 'No encontrado' } },
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('./views/LoginView.vue'),
+    meta: { guestOnly: true, title: 'Iniciar sesión' },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('./views/RegisterView.vue'),
+    meta: { guestOnly: true, title: 'Crear cuenta' },
+  },
+  {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: () => import('./views/ForgotPasswordView.vue'),
+    meta: { guestOnly: true, title: 'Recuperar contraseña' },
+  },
+  {
+    path: '/reset-password',
+    name: 'reset-password',
+    component: () => import('./views/ResetPasswordView.vue'),
+    meta: { public: true, title: 'Nueva contraseña' },
+  },
+  {
+    path: '/verify-email',
+    name: 'verify-email',
+    component: () => import('./views/VerifyEmailView.vue'),
+    meta: { public: true, title: 'Verificar email' },
+  },
+  {
+    path: '/accept-invitation',
+    name: 'accept-invitation',
+    component: () => import('./views/AcceptInvitationView.vue'),
+    meta: { public: true, title: 'Aceptar invitación' },
+  },
+  {
+    path: '/select-tenant',
+    name: 'select-tenant',
+    component: () => import('./views/SelectTenantView.vue'),
+    meta: { noTenant: true, title: 'Elegir empresa' },
+  },
+  {
+    path: '/',
+    name: 'dashboard',
+    component: () => import('./views/DashboardView.vue'),
+    meta: { title: 'Inicio' },
+  },
+  {
+    path: '/members',
+    name: 'members',
+    component: () => import('./views/MembersView.vue'),
+    meta: { permission: 'members:read', title: 'Equipo' },
+  },
+  {
+    path: '/audit',
+    name: 'audit',
+    component: () => import('./views/AuditView.vue'),
+    meta: { permission: 'audit:read', title: 'Auditoría' },
+  },
+  {
+    path: '/forbidden',
+    name: 'forbidden',
+    component: () => import('./views/ForbiddenView.vue'),
+    meta: { title: 'Sin acceso' },
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('./views/NotFoundView.vue'),
+    meta: { public: true, title: 'No encontrado' },
+  },
 ];
 
 export function createAppRouter(history = createWebHistory()) {

@@ -17,7 +17,8 @@ export type AuthzMeta =
 export const Public = () => SetMetadata(AUTHZ_KEY, { kind: 'public' } satisfies AuthzMeta);
 
 /** Usuario autenticado; NO exige empresa activa ni permisos (p.ej. /me, cambiar de empresa). */
-export const Authenticated = () => SetMetadata(AUTHZ_KEY, { kind: 'authenticated' } satisfies AuthzMeta);
+export const Authenticated = () =>
+  SetMetadata(AUTHZ_KEY, { kind: 'authenticated' } satisfies AuthzMeta);
 
 /** Exige empresa activa y TODOS los permisos indicados. */
 export const RequirePermissions = (...permissions: PermissionKey[]) =>

@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { createMemoryHistory } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiMock, auth, ids, me } from './helpers';
+import { apiMock, auth, me } from './helpers';
 
 vi.mock('../api', () => ({ api: apiMock, setAuthLostHandler: () => undefined }));
 
@@ -49,7 +49,10 @@ describe('LoginView', () => {
     await wrapper.get('input[type=password]').setValue('clave-larga-123');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
-    expect(apiMock.login).toHaveBeenCalledWith({ email: 'ana@x.test', password: 'clave-larga-123' });
+    expect(apiMock.login).toHaveBeenCalledWith({
+      email: 'ana@x.test',
+      password: 'clave-larga-123',
+    });
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('dashboard'));
   });
 
@@ -125,7 +128,12 @@ describe('AcceptInvitationView', () => {
   const TOKEN = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG';
 
   it('lee el token del fragmento, lo borra de la URL y muestra empresa y rol', async () => {
-    apiMock.previewInvitation.mockResolvedValue({ tenantName: 'Spa Lago', roleName: 'Gerente', email: 'nuevo@x.test', accountExists: false });
+    apiMock.previewInvitation.mockResolvedValue({
+      tenantName: 'Spa Lago',
+      roleName: 'Gerente',
+      email: 'nuevo@x.test',
+      accountExists: false,
+    });
     const { wrapper } = await mountView(AcceptInvitationView, `/accept-invitation#token=${TOKEN}`);
     await flushPromises();
     expect(apiMock.previewInvitation).toHaveBeenCalledWith(TOKEN);
@@ -135,10 +143,22 @@ describe('AcceptInvitationView', () => {
   });
 
   it('cuenta nueva: pide nombre y contraseña, crea la cuenta e inicia sesión', async () => {
-    apiMock.previewInvitation.mockResolvedValue({ tenantName: 'Spa Lago', roleName: 'Gerente', email: 'nuevo@x.test', accountExists: false });
-    apiMock.acceptInvitation.mockResolvedValue({ outcome: 'account_created', tenantName: 'Spa Lago', auth: auth() });
+    apiMock.previewInvitation.mockResolvedValue({
+      tenantName: 'Spa Lago',
+      roleName: 'Gerente',
+      email: 'nuevo@x.test',
+      accountExists: false,
+    });
+    apiMock.acceptInvitation.mockResolvedValue({
+      outcome: 'account_created',
+      tenantName: 'Spa Lago',
+      auth: auth(),
+    });
     apiMock.me.mockResolvedValue(me());
-    const { wrapper, router } = await mountView(AcceptInvitationView, `/accept-invitation#token=${TOKEN}`);
+    const { wrapper, router } = await mountView(
+      AcceptInvitationView,
+      `/accept-invitation#token=${TOKEN}`,
+    );
     await flushPromises();
     const inputs = wrapper.findAll('input');
     expect(inputs.length).toBe(3); // email (deshabilitado) + nombre + contraseña
@@ -146,12 +166,21 @@ describe('AcceptInvitationView', () => {
     await inputs[2]!.setValue('clave-larga-123');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
-    expect(apiMock.acceptInvitation).toHaveBeenCalledWith({ token: TOKEN, fullName: 'Marta Díaz', password: 'clave-larga-123' });
+    expect(apiMock.acceptInvitation).toHaveBeenCalledWith({
+      token: TOKEN,
+      fullName: 'Marta Díaz',
+      password: 'clave-larga-123',
+    });
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('dashboard'));
   });
 
   it('cuenta existente: solo confirma (no pide contraseña) y pide iniciar sesión', async () => {
-    apiMock.previewInvitation.mockResolvedValue({ tenantName: 'Spa Lago', roleName: 'Gerente', email: 'ana@x.test', accountExists: true });
+    apiMock.previewInvitation.mockResolvedValue({
+      tenantName: 'Spa Lago',
+      roleName: 'Gerente',
+      email: 'ana@x.test',
+      accountExists: true,
+    });
     apiMock.acceptInvitation.mockResolvedValue({ outcome: 'joined', tenantName: 'Spa Lago' });
     const { wrapper } = await mountView(AcceptInvitationView, `/accept-invitation#token=${TOKEN}`);
     await flushPromises();
@@ -199,7 +228,10 @@ describe('ResetPasswordView', () => {
     await b!.setValue('Clave-Nueva-123');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
-    expect(apiMock.resetPassword).toHaveBeenCalledWith({ token: TOKEN, password: 'Clave-Nueva-123' });
+    expect(apiMock.resetPassword).toHaveBeenCalledWith({
+      token: TOKEN,
+      password: 'Clave-Nueva-123',
+    });
     expect(wrapper.text()).toContain('contraseña fue actualizada');
   });
 

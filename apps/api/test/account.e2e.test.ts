@@ -30,7 +30,8 @@ afterAll(async () => {
 const NEW_PASSWORD = 'Otra-Clave-Muy-Segura-9';
 const post = (path: string) => http(app).post(`/api/v1${path}`);
 const forgot = (email: string) => post('/auth/forgot-password').send({ email });
-const reset = (token: string, password = NEW_PASSWORD) => post('/auth/reset-password').send({ token, password });
+const reset = (token: string, password = NEW_PASSWORD) =>
+  post('/auth/reset-password').send({ token, password });
 
 describe('verificación de email', () => {
   it('la cuenta nace sin verificar, recibe el enlace y no puede invitar hasta verificar', async () => {
@@ -68,18 +69,25 @@ describe('verificación de email', () => {
     const again = await post('/auth/verify-email').send({ token });
     expect(again.status).toBe(400);
     expect(again.body.code).toBe('LINK_INVALID');
-    expect((await post('/auth/verify-email').send({ token: 'x'.repeat(43) })).body.code).toBe('LINK_INVALID');
+    expect((await post('/auth/verify-email').send({ token: 'x'.repeat(43) })).body.code).toBe(
+      'LINK_INVALID',
+    );
 
     const p = await register(app, { verified: false });
     const t2 = tokenFrom(await waitForMail(p.email));
-    await owner.query(`UPDATE email_verification_tokens SET expires_at = now() - interval '1 minute' WHERE user_id=$1`, [p.body.user.id]);
+    await owner.query(
+      `UPDATE email_verification_tokens SET expires_at = now() - interval '1 minute' WHERE user_id=$1`,
+      [p.body.user.id],
+    );
     expect((await post('/auth/verify-email').send({ token: t2 })).body.code).toBe('LINK_INVALID');
   });
 
   it('cinco verificaciones simultáneas del mismo token: solo una gana', async () => {
     const o = await register(app, { verified: false });
     const token = tokenFrom(await waitForMail(o.email));
-    const res = await Promise.all(Array.from({ length: 5 }, () => post('/auth/verify-email').send({ token })));
+    const res = await Promise.all(
+      Array.from({ length: 5 }, () => post('/auth/verify-email').send({ token })),
+    );
     expect(res.filter((r) => r.status === 204)).toHaveLength(1);
   });
 
@@ -103,7 +111,10 @@ describe('verificación de email', () => {
   it('en la BD solo hay hashes de token, nunca el token', async () => {
     const o = await register(app, { verified: false });
     const token = tokenFrom(await waitForMail(o.email));
-    const dump = await owner.query(`SELECT row_to_json(t)::text AS j FROM email_verification_tokens t WHERE user_id=$1`, [o.body.user.id]);
+    const dump = await owner.query(
+      `SELECT row_to_json(t)::text AS j FROM email_verification_tokens t WHERE user_id=$1`,
+      [o.body.user.id],
+    );
     expect(dump.rows[0].j).not.toContain(token);
   });
 });
@@ -145,7 +156,9 @@ describe('recuperar contraseña', () => {
     // Sesiones anteriores muertas (access y refresh) en TODOS los dispositivos.
     expect((await http(app).get('/api/v1/me').set(o.auth)).status).toBe(401);
     expect((await http(app).get('/api/v1/me').set(session2.auth)).status).toBe(401);
-    const refresh = await post('/auth/refresh').set('x-rp-csrf', '1').set('Cookie', `rp_refresh=${o.refresh}`);
+    const refresh = await post('/auth/refresh')
+      .set('x-rp-csrf', '1')
+      .set('Cookie', `rp_refresh=${o.refresh}`);
     expect(refresh.status).toBe(401);
 
     // La contraseña vieja ya no sirve; la nueva sí.
@@ -172,7 +185,10 @@ describe('recuperar contraseña', () => {
     const p = await register(app);
     await forgot(p.email);
     const t = tokenFrom(await waitForMail(p.email, (m) => m.subject.includes('Restablece')));
-    await owner.query(`UPDATE password_reset_tokens SET expires_at = now() - interval '1 minute' WHERE user_id=$1`, [p.body.user.id]);
+    await owner.query(
+      `UPDATE password_reset_tokens SET expires_at = now() - interval '1 minute' WHERE user_id=$1`,
+      [p.body.user.id],
+    );
     expect((await reset(t)).body.code).toBe('LINK_INVALID');
   });
 
@@ -209,7 +225,10 @@ describe('recuperar contraseña', () => {
     const o = await register(app);
     await forgot(o.email);
     const token = tokenFrom(await waitForMail(o.email, (m) => m.subject.includes('Restablece')));
-    const dump = await owner.query(`SELECT row_to_json(t)::text AS j FROM password_reset_tokens t WHERE user_id=$1`, [o.body.user.id]);
+    const dump = await owner.query(
+      `SELECT row_to_json(t)::text AS j FROM password_reset_tokens t WHERE user_id=$1`,
+      [o.body.user.id],
+    );
     expect(dump.rows[0].j).not.toContain(token);
   });
 });
@@ -217,7 +236,9 @@ describe('recuperar contraseña', () => {
 describe('cambiar contraseña (autenticado)', () => {
   it('exige la contraseña actual correcta: error 400 y NO 401 (el cliente no debe cerrar sesión)', async () => {
     const o = await register(app);
-    const res = await post('/auth/change-password').set(o.auth).send({ currentPassword: 'equivocada-123456', newPassword: NEW_PASSWORD });
+    const res = await post('/auth/change-password')
+      .set(o.auth)
+      .send({ currentPassword: 'equivocada-123456', newPassword: NEW_PASSWORD });
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('INVALID_CREDENTIALS');
     expect((await http(app).get('/api/v1/me').set(o.auth)).status).toBe(200);
@@ -225,14 +246,28 @@ describe('cambiar contraseña (autenticado)', () => {
 
   it('rechaza una nueva igual a la actual o débil', async () => {
     const o = await register(app);
-    expect((await post('/auth/change-password').set(o.auth).send({ currentPassword: PASSWORD, newPassword: PASSWORD })).status).toBe(400);
-    expect((await post('/auth/change-password').set(o.auth).send({ currentPassword: PASSWORD, newPassword: 'corta' })).status).toBe(400);
+    expect(
+      (
+        await post('/auth/change-password')
+          .set(o.auth)
+          .send({ currentPassword: PASSWORD, newPassword: PASSWORD })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await post('/auth/change-password')
+          .set(o.auth)
+          .send({ currentPassword: PASSWORD, newPassword: 'corta' })
+      ).status,
+    ).toBe(400);
   });
 
   it('cambia la contraseña, conserva ESTA sesión y cierra las demás', async () => {
     const o = await register(app);
     const other = await login(app, o.email);
-    const res = await post('/auth/change-password').set(o.auth).send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
+    const res = await post('/auth/change-password')
+      .set(o.auth)
+      .send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
     expect(res.status).toBe(204);
 
     expect((await http(app).get('/api/v1/me').set(o.auth)).status).toBe(200); // la actual sigue
@@ -243,15 +278,26 @@ describe('cambiar contraseña (autenticado)', () => {
   });
 
   it('exige autenticación', async () => {
-    expect((await post('/auth/change-password').send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD })).status).toBe(401);
+    expect(
+      (
+        await post('/auth/change-password').send({
+          currentPassword: PASSWORD,
+          newPassword: NEW_PASSWORD,
+        })
+      ).status,
+    ).toBe(401);
   });
 });
 
 describe('cookie de la sesión actual tras cambiar contraseña', () => {
   it('el refresh de la sesión conservada sigue funcionando', async () => {
     const o = await register(app);
-    await post('/auth/change-password').set(o.auth).send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
-    const res = await post('/auth/refresh').set('x-rp-csrf', '1').set('Cookie', `rp_refresh=${o.refresh}`);
+    await post('/auth/change-password')
+      .set(o.auth)
+      .send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
+    const res = await post('/auth/refresh')
+      .set('x-rp-csrf', '1')
+      .set('Cookie', `rp_refresh=${o.refresh}`);
     expect(res.status).toBe(200);
     expect(cookieValue(res.headers['set-cookie'])).toBeTruthy();
   });

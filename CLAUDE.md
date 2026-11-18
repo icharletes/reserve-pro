@@ -18,9 +18,13 @@ Documento maestro: `reservepro_blueprint_claude.md`. Arquitectura vigente: `docs
 ## Comandos
 ```
 pnpm install            pnpm db:up / db:down / db:reset   (Postgres, Redis, Mailpit)
-pnpm build|typecheck|test   (turbo)
+pnpm build|typecheck|test   (turbo)        pnpm lint | pnpm format:check | pnpm format
+pnpm --filter @reservepro/api openapi:generate     (regenerar docs/api/openapi.json tras tocar endpoints)
+pnpm --filter @reservepro/api start | start:worker (API y worker)      pnpm --filter @reservepro/admin dev
+pnpm --filter @reservepro/database db:migrate      (aplicar migraciones; luego `prisma db pull` + `generate`)
 ```
-Entorno: **Node ≥ 22.12** (Prisma 7 exige ≥ 20.19; Node 20 está fuera de soporte), pnpm 9 (corepack). Copiar `.env.example` a `.env`.
+Antes de dar algo por terminado: `pnpm exec eslint . --max-warnings 0 && pnpm format:check && pnpm typecheck && pnpm build && pnpm test`.
+Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige ≥ 20.19; Node 20 está fuera de soporte), pnpm 9 (corepack). Copiar `.env.example` a `.env`.
 - Node 22 está en `~/.local/node-v22.23.5` (binario oficial, sin tocar el Node global). Anteponer a PATH:
   `export PATH=$HOME/.local/node-v22.23.5/bin:$PATH`
 - Mac Intel: si vitest falla con `@rolldown/binding-*`, ejecutar `pnpm install --force`.
@@ -30,13 +34,14 @@ Entorno: **Node ≥ 22.12** (Prisma 7 exige ≥ 20.19; Node 20 está fuera de so
 - Toda consulta de tenant va por `withTenant(db, {tenantId}, tx => …)`; nunca por el cliente suelto.
 
 ## Estado
-Fase 0 cerrada (ADRs). Fase 1 en curso:
-- ✔ Monorepo, Docker, `booking-domain`, `contracts`.
-- ✔ `packages/database`: migración 0001 (SaaS, acceso, RBAC, auditoría, RLS), `withTenant`/`withUser`, 23 tests de aislamiento.
-- ✔ `apps/api` (NestJS 12): config validada, errores Problem+JSON, auth (register/login/refresh con rotación/logout/switch-tenant/me), RBAC fail-closed con 38 permisos y 5 roles, auditoría transaccional, tenants (GET/PATCH current), health. 60 tests e2e + unitarios.
-- ✔ Migración 0002: políticas "propias" solo sin tenant activo (bug de aislamiento hallado por el e2e).
-- ✔ Invitaciones (crear/listar/reenviar/revocar, preview y aceptar con token en el cuerpo) y miembros (listar paginado, cambiar estado y roles, roles de la empresa) con anti-escalada y protección del último propietario (ADR-010). Email por SMTP/Mailpit tras el puerto `EmailProvider`. 163 tests en total.
-- ☐ Pendiente Fase 1: recuperación de contraseña, consulta de auditoría, rate limiting (Redis), verificación de email del propietario (anti-abuso de invitaciones), OpenAPI, entrypoint `worker.ts`, esqueletos `apps/web` y `apps/admin`, CI (GitHub Actions) y lint (ESLint + boundaries).
+**Fase 1 (Fundamentos) completa.** Pendiente solo lo operativo: ejecutar el workflow en GitHub real y proteger `main`.
+- ✔ Monorepo, Docker, `booking-domain` (máquina de estados), `contracts`, `database` (migraciones 0001–0004, RLS, `withTenant`).
+- ✔ `apps/api`: auth (register/login/refresh con rotación/logout/switch-tenant/me), verificación de email, recuperar/cambiar contraseña, RBAC fail-closed (38 permisos, 5 roles), invitaciones y miembros (anti-escalada, último propietario), auditoría (escritura y consulta), rate limiting con Redis, OpenAPI generado, health.
+- ✔ Worker (`worker.ts`, BullMQ): purga diaria de tokens vencidos.
+- ✔ `packages/api-client`, `apps/admin` (Vue), `apps/web` (Astro SSR).
+- ✔ ESLint (reglas de arquitectura y seguridad) + Prettier + CI + Dependabot.
+- 317 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md` (~300 req/s por instancia en endpoints autenticados).
+- **Siguiente: Fase 2 (catálogo y agenda)**: sucursales, servicios, recursos, horarios, bloqueos, calendario.
 
 ## Reglas de código de la API
 - Todo endpoint declara `@Public()`, `@Authenticated()` o `@RequirePermissions()`; sin eso no se ejecuta.
@@ -47,3 +52,7 @@ Fase 0 cerrada (ADRs). Fase 1 en curso:
 - Anti-escalada: para otorgar un rol o gestionar un miembro usar `canHold(actor.permissions, permisosObjetivo)` (`modules/members/privileges.ts`); nunca comparar por nombre de rol.
 - Los tokens secretos (invitaciones, refresh) viajan en cuerpo o cookie, nunca en la URL; en BD solo su SHA-256.
 - Tests de API con email: usar `mailbox` y `tokenFrom()` de `test/helpers.ts`; el token se lee del correo, jamás de la respuesta.
+- Lint: las reglas de arquitectura (`eslint.config.mjs`) son parte del diseño: booking-domain puro, el navegador no importa código de servidor, nada de `$queryRawUnsafe`, `localStorage` ni `v-html`. Si añades un bloque con `no-restricted-imports`, usa el helper `restrict()` (flat config: el último bloque REEMPLAZA a los anteriores).
+- Todo endpoint nuevo: `@ApiDoc` + política de autorización; un test falla si falta. Todo POST público necesita `@RateLimit`. Tras cambiar endpoints, regenerar OpenAPI.
+- `astro check` no funciona (dependencia beta); el portal usa `astro sync` + `tsc` y `astro build`.
+- Medir antes de optimizar; no cachear la identidad (rompería la desactivación inmediata). Ver PERFORMANCE.md.

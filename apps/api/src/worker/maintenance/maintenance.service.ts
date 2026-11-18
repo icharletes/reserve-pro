@@ -36,14 +36,17 @@ export class MaintenanceService {
 
     // Un refresh token vencido hace más de GRACE_DAYS ya no puede usarse ni sirve para detectar reutilización.
     const refreshTokens = await this.inBatches(
-      () => db.$executeRaw`DELETE FROM refresh_tokens WHERE ctid IN (SELECT ctid FROM refresh_tokens WHERE expires_at < ${cutoff} LIMIT ${BATCH})`,
+      () =>
+        db.$executeRaw`DELETE FROM refresh_tokens WHERE ctid IN (SELECT ctid FROM refresh_tokens WHERE expires_at < ${cutoff} LIMIT ${BATCH})`,
     );
     // Los de un solo uso: vencidos o ya usados hace más de GRACE_DAYS.
     const passwordResetTokens = await this.inBatches(
-      () => db.$executeRaw`DELETE FROM password_reset_tokens WHERE ctid IN (SELECT ctid FROM password_reset_tokens WHERE expires_at < ${cutoff} OR used_at < ${cutoff} LIMIT ${BATCH})`,
+      () =>
+        db.$executeRaw`DELETE FROM password_reset_tokens WHERE ctid IN (SELECT ctid FROM password_reset_tokens WHERE expires_at < ${cutoff} OR used_at < ${cutoff} LIMIT ${BATCH})`,
     );
     const emailVerificationTokens = await this.inBatches(
-      () => db.$executeRaw`DELETE FROM email_verification_tokens WHERE ctid IN (SELECT ctid FROM email_verification_tokens WHERE expires_at < ${cutoff} OR used_at < ${cutoff} LIMIT ${BATCH})`,
+      () =>
+        db.$executeRaw`DELETE FROM email_verification_tokens WHERE ctid IN (SELECT ctid FROM email_verification_tokens WHERE expires_at < ${cutoff} OR used_at < ${cutoff} LIMIT ${BATCH})`,
     );
 
     const result = { refreshTokens, passwordResetTokens, emailVerificationTokens };

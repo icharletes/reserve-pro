@@ -8,7 +8,12 @@ const route = useRoute();
 const auth = useAuthStore();
 // Las pantallas de visitante (login, enlaces del email) van sin la barra superior.
 const withShell = computed(
-  () => auth.isAuthenticated && auth.hasTenant && !route.meta.public && !route.meta.guestOnly && !route.meta.noTenant,
+  () =>
+    auth.isAuthenticated &&
+    auth.hasTenant &&
+    !route.meta.public &&
+    !route.meta.guestOnly &&
+    !route.meta.noTenant,
 );
 </script>
 

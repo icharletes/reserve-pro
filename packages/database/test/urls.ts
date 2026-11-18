@@ -12,7 +12,8 @@ function withDb(url: string, db: string): string {
 
 function need(name: string): string {
   const v = process.env[name];
-  if (!v) throw new Error(`Falta ${name}. Copia .env.example a .env y levanta Docker (pnpm db:up).`);
+  if (!v)
+    throw new Error(`Falta ${name}. Copia .env.example a .env y levanta Docker (pnpm db:up).`);
   return v;
 }
 

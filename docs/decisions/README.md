@@ -16,3 +16,4 @@ Una decisión **no se borra**: si cambia, se crea un ADR nuevo que la reemplaza 
 | [009](009-stack-api-nestjs.md) | Stack de la API: NestJS 12 (ESM), TS 5.9, Zod propio, autorización fail-closed | Aceptado |
 | [010](010-invitaciones-y-miembros.md) | Invitaciones, miembros y anti-escalada de privilegios | Aceptado |
 | [011](011-rate-limiting-verificacion-contrasenas.md) | Rate limiting, verificación de email y gestión de contraseñas | Aceptado |
+| [012](012-worker-frontends-calidad-ci.md) | Worker, cliente de API, frontends, calidad (lint/formato) y CI | Aceptado |

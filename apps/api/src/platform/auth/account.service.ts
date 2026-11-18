@@ -42,7 +42,10 @@ export class AccountService {
    */
   private sendInBackground(message: EmailMessage, kind: string): void {
     void this.email.send(message).catch((err: unknown) => {
-      this.logger.error({ err: (err as Error).message, kind, to: message.to }, 'no se pudo enviar el email');
+      this.logger.error(
+        { err: (err as Error).message, kind, to: message.to },
+        'no se pudo enviar el email',
+      );
     });
   }
 
@@ -59,16 +62,25 @@ export class AccountService {
         data: { used_at: new Date() },
       }),
       db.email_verification_tokens.create({
-        data: { id: uuidv7(), user_id: user.id, token_hash: hash, expires_at: new Date(Date.now() + VERIFY_TTL_MS) },
+        data: {
+          id: uuidv7(),
+          user_id: user.id,
+          token_hash: hash,
+          expires_at: new Date(Date.now() + VERIFY_TTL_MS),
+        },
       }),
     ]);
     this.sendInBackground(
       renderActionEmail({
         to: user.email,
         subject: 'Confirma tu email en ReservePro',
-        paragraphs: [`Hola ${user.fullName},`, 'Confirma tu dirección de email para activar todas las funciones de tu cuenta.'],
+        paragraphs: [
+          `Hola ${user.fullName},`,
+          'Confirma tu dirección de email para activar todas las funciones de tu cuenta.',
+        ],
         action: { label: 'Confirmar email', url: this.link('/verify-email', token) },
-        footer: 'El enlace vence en 24 horas. Si no creaste esta cuenta, puedes ignorar este mensaje.',
+        footer:
+          'El enlace vence en 24 horas. Si no creaste esta cuenta, puedes ignorar este mensaje.',
       }),
       'email-verification',
     );
@@ -76,12 +88,18 @@ export class AccountService {
 
   async resendVerification(principal: Principal): Promise<void> {
     if (principal.emailVerified) return; // ya verificado: no hay nada que hacer
-    await this.sendVerification({ id: principal.userId, email: principal.email, fullName: principal.fullName });
+    await this.sendVerification({
+      id: principal.userId,
+      email: principal.email,
+      fullName: principal.fullName,
+    });
   }
 
   async verifyEmail(token: string): Promise<void> {
     const db = this.tdb.global;
-    const row = await db.email_verification_tokens.findUnique({ where: { token_hash: hashOneTimeToken(token) } });
+    const row = await db.email_verification_tokens.findUnique({
+      where: { token_hash: hashOneTimeToken(token) },
+    });
     if (!row) throw Errors.linkInvalid();
 
     await db.$transaction(async (tx) => {
@@ -91,7 +109,10 @@ export class AccountService {
         data: { used_at: new Date() },
       });
       if (claimed.count !== 1) throw Errors.linkInvalid();
-      await tx.users.updateMany({ where: { id: row.user_id, email_verified_at: null }, data: { email_verified_at: new Date() } });
+      await tx.users.updateMany({
+        where: { id: row.user_id, email_verified_at: null },
+        data: { email_verified_at: new Date() },
+      });
     });
   }
 
@@ -106,18 +127,30 @@ export class AccountService {
 
     const { token, hash } = generateOneTimeToken();
     await db.$transaction([
-      db.password_reset_tokens.updateMany({ where: { user_id: user.id, used_at: null }, data: { used_at: new Date() } }),
+      db.password_reset_tokens.updateMany({
+        where: { user_id: user.id, used_at: null },
+        data: { used_at: new Date() },
+      }),
       db.password_reset_tokens.create({
-        data: { id: uuidv7(), user_id: user.id, token_hash: hash, expires_at: new Date(Date.now() + RESET_TTL_MS) },
+        data: {
+          id: uuidv7(),
+          user_id: user.id,
+          token_hash: hash,
+          expires_at: new Date(Date.now() + RESET_TTL_MS),
+        },
       }),
     ]);
     this.sendInBackground(
       renderActionEmail({
         to: user.email,
         subject: 'Restablece tu contraseña de ReservePro',
-        paragraphs: [`Hola ${user.full_name},`, 'Recibimos una solicitud para restablecer tu contraseña.'],
+        paragraphs: [
+          `Hola ${user.full_name},`,
+          'Recibimos una solicitud para restablecer tu contraseña.',
+        ],
         action: { label: 'Elegir una contraseña nueva', url: this.link('/reset-password', token) },
-        footer: 'El enlace vence en 1 hora. Si no fuiste tú, ignora este mensaje: tu contraseña no cambiará.',
+        footer:
+          'El enlace vence en 1 hora. Si no fuiste tú, ignora este mensaje: tu contraseña no cambiará.',
       }),
       'password-reset',
     );
@@ -149,15 +182,25 @@ export class AccountService {
         },
       });
       // Cualquier sesión previa pudo estar comprometida: se cierran TODAS.
-      await tx.refresh_tokens.updateMany({ where: { user_id: row.user_id, revoked_at: null }, data: { revoked_at: new Date() } });
+      await tx.refresh_tokens.updateMany({
+        where: { user_id: row.user_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
       // Los demás enlaces de recuperación pendientes dejan de servir.
-      await tx.password_reset_tokens.updateMany({ where: { user_id: row.user_id, used_at: null }, data: { used_at: new Date() } });
+      await tx.password_reset_tokens.updateMany({
+        where: { user_id: row.user_id, used_at: null },
+        data: { used_at: new Date() },
+      });
     });
     this.notifyPasswordChanged(row.users.email, row.users.full_name);
   }
 
   /** El usuario autenticado cambia su contraseña. Cierra sus OTRAS sesiones y conserva la actual. */
-  async changePassword(principal: Principal, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    principal: Principal,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     const db = this.tdb.global;
     const user = await db.users.findUnique({ where: { id: principal.userId } });
     if (!user || !(await this.passwords.verify(user.password_hash, currentPassword))) {
@@ -165,7 +208,10 @@ export class AccountService {
     }
     const passwordHash = await this.passwords.hash(newPassword);
     await db.$transaction([
-      db.users.update({ where: { id: user.id }, data: { password_hash: passwordHash, failed_logins: 0, locked_until: null } }),
+      db.users.update({
+        where: { id: user.id },
+        data: { password_hash: passwordHash, failed_logins: 0, locked_until: null },
+      }),
       db.refresh_tokens.updateMany({
         where: { user_id: user.id, revoked_at: null, family_id: { not: principal.sessionId } },
         data: { revoked_at: new Date() },

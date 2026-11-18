@@ -14,7 +14,10 @@ export class HealthController {
   ) {}
 
   /** Liveness: el proceso responde. */
-  @ApiDoc({ summary: 'Liveness: el proceso responde', response: zod.object({ status: zod.literal('ok') }) })
+  @ApiDoc({
+    summary: 'Liveness: el proceso responde',
+    response: zod.object({ status: zod.literal('ok') }),
+  })
   @Public()
   @Get()
   live() {
@@ -22,7 +25,15 @@ export class HealthController {
   }
 
   /** Readiness: las dependencias críticas responden (base de datos). */
-  @ApiDoc({ summary: 'Readiness: base de datos y Redis', description: 'Devuelve 503 con el detalle por dependencia si alguna falla.', response: zod.object({ status: zod.enum(['ok', 'unavailable']), checks: zod.object({ database: zod.enum(['up', 'down']), redis: zod.enum(['up', 'down']) }) }), errors: { 503: 'Alguna dependencia no responde' } })
+  @ApiDoc({
+    summary: 'Readiness: base de datos y Redis',
+    description: 'Devuelve 503 con el detalle por dependencia si alguna falla.',
+    response: zod.object({
+      status: zod.enum(['ok', 'unavailable']),
+      checks: zod.object({ database: zod.enum(['up', 'down']), redis: zod.enum(['up', 'down']) }),
+    }),
+    errors: { 503: 'Alguna dependencia no responde' },
+  })
   @Public()
   @Get('ready')
   async ready(@Res({ passthrough: true }) res: Response) {

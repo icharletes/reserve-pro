@@ -12,7 +12,9 @@ if (existsSync(rootEnv)) loadDotenv({ path: rootEnv, quiet: true });
 
 async function main(): Promise<void> {
   // Contexto sin servidor HTTP: el worker solo consume colas.
-  const app = await NestFactory.createApplicationContext(WorkerModule, { logger: ['error', 'warn'] });
+  const app = await NestFactory.createApplicationContext(WorkerModule, {
+    logger: ['error', 'warn'],
+  });
   app.enableShutdownHooks(); // SIGTERM/SIGINT => cierre ordenado (termina el job en curso)
   app.get<Logger>(LOGGER).info('worker iniciado');
 }

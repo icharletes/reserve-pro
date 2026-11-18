@@ -3,7 +3,15 @@ import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PERMISSION_KEYS } from '@reservepro/contracts';
 import type { Response } from 'supertest';
-import { type Auth, createTestApp, http, joinTenant, login, ownerPool, register } from './helpers.js';
+import {
+  type Auth,
+  createTestApp,
+  http,
+  joinTenant,
+  login,
+  ownerPool,
+  register,
+} from './helpers.js';
 
 let app: INestApplication;
 let owner: pg.Pool;
@@ -30,7 +38,9 @@ describe('listado de miembros', () => {
     expect(res.status).toBe(200);
     expect(res.body.items).toHaveLength(2);
     expect(res.body.nextCursor).toBeNull();
-    expect(res.body.items.map((m: { roles: { key: string }[] }) => m.roles[0]!.key).sort()).toEqual(['owner', 'professional']);
+    expect(res.body.items.map((m: { roles: { key: string }[] }) => m.roles[0]!.key).sort()).toEqual(
+      ['owner', 'professional'],
+    );
     expect(JSON.stringify(res.body)).not.toMatch(/password|argon2|token_hash/i);
   });
 
@@ -60,7 +70,9 @@ describe('listado de miembros', () => {
     expect((await http(app).get(`${base}/members?cursor=basura`).set(o.auth)).status).toBe(400);
     expect((await http(app).get(`${base}/members?limit=1000`).set(o.auth)).status).toBe(400);
     const inyeccion = Buffer.from("' OR 1=1 --").toString('base64url');
-    expect((await http(app).get(`${base}/members?cursor=${inyeccion}`).set(o.auth)).status).toBe(400);
+    expect((await http(app).get(`${base}/members?cursor=${inyeccion}`).set(o.auth)).status).toBe(
+      400,
+    );
   });
 
   it('jamás incluye miembros de otra empresa, ni con el cursor de otra', async () => {
@@ -69,7 +81,9 @@ describe('listado de miembros', () => {
     await joinTenant(app, owner, b.tenantId, 'professional');
     const bList = await http(app).get(`${base}/members?limit=1`).set(b.auth);
 
-    const aList = await http(app).get(`${base}/members?cursor=${bList.body.nextCursor}`).set(a.auth);
+    const aList = await http(app)
+      .get(`${base}/members?cursor=${bList.body.nextCursor}`)
+      .set(a.auth);
     const aEmails = aList.body.items.map((m: { email: string }) => m.email);
     expect(aEmails.every((e: string) => e === a.email)).toBe(true);
     const all = await http(app).get(`${base}/members`).set(a.auth);
@@ -82,7 +96,13 @@ describe('roles de la empresa', () => {
     const o = await register(app);
     const res = await http(app).get(`${base}/roles`).set(o.auth);
     expect(res.status).toBe(200);
-    expect(res.body.map((r: { key: string }) => r.key)).toEqual(['admin', 'manager', 'owner', 'professional', 'receptionist']);
+    expect(res.body.map((r: { key: string }) => r.key)).toEqual([
+      'admin',
+      'manager',
+      'owner',
+      'professional',
+      'receptionist',
+    ]);
     const ownerRole = res.body.find((r: { key: string }) => r.key === 'owner');
     expect(ownerRole.permissions).toHaveLength(PERMISSION_KEYS.length);
     expect(ownerRole.isSystem).toBe(true);
@@ -152,7 +172,10 @@ describe('modificar miembros', () => {
       [o.tenantId],
     );
     expect(a.rows).toEqual([
-      { before: { status: 'active', roles: ['professional'] }, after: { status: 'disabled', roles: ['receptionist'] } },
+      {
+        before: { status: 'active', roles: ['professional'] },
+        after: { status: 'disabled', roles: ['receptionist'] },
+      },
     ]);
   });
 });
@@ -160,15 +183,21 @@ describe('modificar miembros', () => {
 describe('anti-escalada de privilegios', () => {
   it('un administrador no puede modificar ni desactivar a un propietario', async () => {
     const o = await register(app);
-    const ownerMembership = (await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1`, [o.tenantId])).rows[0].id;
+    const ownerMembership = (
+      await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1`, [o.tenantId])
+    ).rows[0].id;
     const admin = await joinTenant(app, owner, o.tenantId, 'admin');
 
     const r1 = await patch(admin.auth, ownerMembership, { status: 'disabled' });
     expect(r1.status).toBe(403);
     expect(r1.body.code).toBe('ROLE_NOT_ALLOWED');
-    expect((await patch(admin.auth, ownerMembership, { roleKeys: ['professional'] })).status).toBe(403);
+    expect((await patch(admin.auth, ownerMembership, { roleKeys: ['professional'] })).status).toBe(
+      403,
+    );
 
-    const still = await owner.query(`SELECT status FROM tenant_memberships WHERE id=$1`, [ownerMembership]);
+    const still = await owner.query(`SELECT status FROM tenant_memberships WHERE id=$1`, [
+      ownerMembership,
+    ]);
     expect(still.rows[0].status).toBe('active');
   });
 
@@ -180,7 +209,9 @@ describe('anti-escalada de privilegios', () => {
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('ROLE_NOT_ALLOWED');
     // tampoco combinando un rol permitido con uno prohibido
-    expect((await patch(admin.auth, pro.membershipId, { roleKeys: ['manager', 'owner'] })).status).toBe(403);
+    expect(
+      (await patch(admin.auth, pro.membershipId, { roleKeys: ['manager', 'owner'] })).status,
+    ).toBe(403);
   });
 
   it('un administrador SÍ gestiona a profesionales y gerentes', async () => {
@@ -204,7 +235,12 @@ describe('la empresa nunca se queda sin propietario', () => {
     for (let round = 0; round < 6; round++) {
       const o1 = await register(app);
       const o2 = await joinTenant(app, owner, o1.tenantId, 'owner');
-      const m1 = (await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1 AND user_id=$2`, [o1.tenantId, o1.body.user.id])).rows[0].id;
+      const m1 = (
+        await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1 AND user_id=$2`, [
+          o1.tenantId,
+          o1.body.user.id,
+        ])
+      ).rows[0].id;
 
       const [r1, r2] = await Promise.all([
         patch(o1.auth, o2.membershipId, { status: 'disabled' }),
@@ -217,7 +253,9 @@ describe('la empresa nunca se queda sin propietario', () => {
           WHERE m.tenant_id=$1 AND m.status='active' AND r.key='owner'`,
         [o1.tenantId],
       );
-      expect(active.rows[0].n, `ronda ${round}: ${r1.status}/${r2.status}`).toBeGreaterThanOrEqual(1);
+      expect(active.rows[0].n, `ronda ${round}: ${r1.status}/${r2.status}`).toBeGreaterThanOrEqual(
+        1,
+      );
       expect([r1.status, r2.status].filter((s) => s === 200).length).toBeLessThanOrEqual(1);
     }
   });
@@ -228,7 +266,12 @@ describe('la empresa nunca se queda sin propietario', () => {
     // o1 degrada a o2: quedan o1 como propietario => permitido
     expect((await patch(o1.auth, o2.membershipId, { roleKeys: ['admin'] })).status).toBe(200);
     // ahora o2 es admin: no puede tocar al único propietario (anti-escalada)
-    const m1 = (await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1 AND user_id=$2`, [o1.tenantId, o1.body.user.id])).rows[0].id;
+    const m1 = (
+      await owner.query(`SELECT id FROM tenant_memberships WHERE tenant_id=$1 AND user_id=$2`, [
+        o1.tenantId,
+        o1.body.user.id,
+      ])
+    ).rows[0].id;
     expect((await patch(o2.auth, m1, { status: 'disabled' })).status).toBe(403);
   });
 });
@@ -240,7 +283,9 @@ describe('aislamiento entre empresas', () => {
     const victim = await joinTenant(app, owner, b.tenantId, 'professional');
     const res = await patch(a.auth, victim.membershipId, { status: 'disabled' });
     expect(res.status).toBe(404);
-    const row = await owner.query(`SELECT status FROM tenant_memberships WHERE id=$1`, [victim.membershipId]);
+    const row = await owner.query(`SELECT status FROM tenant_memberships WHERE id=$1`, [
+      victim.membershipId,
+    ]);
     expect(row.rows[0].status).toBe('active');
   });
 
@@ -249,8 +294,14 @@ describe('aislamiento entre empresas', () => {
     const b = await register(app);
     const adminA = await joinTenant(app, owner, a.tenantId, 'professional'); // usuario X: profesional en A
     // X también es administrador de B
-    const m = await owner.query(`INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2) RETURNING id`, [b.tenantId, adminA.userId]);
-    await owner.query(`INSERT INTO membership_roles(tenant_id,membership_id,role_id) SELECT $1,$2,id FROM roles WHERE tenant_id=$1 AND key='admin'`, [b.tenantId, m.rows[0].id]);
+    const m = await owner.query(
+      `INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES (gen_random_uuid(),$1,$2) RETURNING id`,
+      [b.tenantId, adminA.userId],
+    );
+    await owner.query(
+      `INSERT INTO membership_roles(tenant_id,membership_id,role_id) SELECT $1,$2,id FROM roles WHERE tenant_id=$1 AND key='admin'`,
+      [b.tenantId, m.rows[0].id],
+    );
 
     const inA = await login(app, adminA.email, { tenantId: a.tenantId });
     // En A es profesional: no puede gestionar miembros aunque en B sea administrador.

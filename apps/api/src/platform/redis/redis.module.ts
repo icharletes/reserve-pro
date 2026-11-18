@@ -1,4 +1,11 @@
-import { Global, Inject, Injectable, Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Global,
+  Inject,
+  Injectable,
+  Module,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { Redis } from 'ioredis';
 import type { Logger } from 'pino';
 import { AppConfig } from '../../config/app-config.js';
@@ -20,7 +27,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const url = config.env.REDIS_URL;
     if (!url) {
       this.client = null;
-      logger.warn('REDIS_URL no definida: el rate limiting usará memoria local (solo válido con una instancia)');
+      logger.warn(
+        'REDIS_URL no definida: el rate limiting usará memoria local (solo válido con una instancia)',
+      );
       return;
     }
     this.client = new Redis(url, {

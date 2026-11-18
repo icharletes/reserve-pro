@@ -28,7 +28,11 @@ export class SessionService {
   ) {}
 
   /** Inicia una sesión nueva (nueva familia). */
-  async start(userId: string, activeTenantId: string | null, client: ClientInfo): Promise<IssuedRefresh> {
+  async start(
+    userId: string,
+    activeTenantId: string | null,
+    client: ClientInfo,
+  ): Promise<IssuedRefresh> {
     return (await this.insert(userId, uuidv7(), activeTenantId, client)).issued;
   }
 
@@ -82,9 +86,17 @@ export class SessionService {
       throw Errors.tokenInvalid();
     }
 
-    const next = await this.insert(current.user_id, current.family_id, current.active_tenant_id, client);
+    const next = await this.insert(
+      current.user_id,
+      current.family_id,
+      current.active_tenant_id,
+      client,
+    );
     // Traza de la cadena de rotación (útil para investigar un incidente).
-    await db.refresh_tokens.update({ where: { id: current.id }, data: { replaced_by: next.rowId } });
+    await db.refresh_tokens.update({
+      where: { id: current.id },
+      data: { replaced_by: next.rowId },
+    });
     return next.issued;
   }
 

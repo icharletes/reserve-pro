@@ -1,6 +1,11 @@
 import { Controller, Get, Injectable, Module } from '@nestjs/common';
 import { DiscoveryModule, DiscoveryService } from '@nestjs/core';
-import { HTTP_CODE_METADATA, METHOD_METADATA, PATH_METADATA, ROUTE_ARGS_METADATA } from '@nestjs/common/constants.js';
+import {
+  HTTP_CODE_METADATA,
+  METHOD_METADATA,
+  PATH_METADATA,
+  ROUTE_ARGS_METADATA,
+} from '@nestjs/common/constants.js';
 import { z } from 'zod';
 import { ERROR_CODES, problem } from '@reservepro/contracts';
 import { AppConfig } from '../../config/app-config.js';
@@ -20,7 +25,7 @@ type Json = Record<string, unknown>;
 
 export interface RouteInfo {
   cls: new () => object;
-  fn: Function;
+  fn: (...args: never[]) => unknown;
   controller: string;
   handler: string;
   method: (typeof HTTP_METHODS)[number];
@@ -29,7 +34,11 @@ export interface RouteInfo {
 }
 
 function toSchema(schema: z.ZodType, io: 'input' | 'output'): Json {
-  const json = z.toJSONSchema(schema, { io, unrepresentable: 'any', target: 'draft-2020-12' }) as Json;
+  const json = z.toJSONSchema(schema, {
+    io,
+    unrepresentable: 'any',
+    target: 'draft-2020-12',
+  }) as Json;
   delete json['$schema'];
   return json;
 }
@@ -63,15 +72,20 @@ export class OpenApiService {
         const methodIdx = Reflect.getMetadata(METHOD_METADATA, fn) as number | undefined;
         if (methodIdx === undefined) continue;
         const sub = String(Reflect.getMetadata(PATH_METADATA, fn) ?? '');
-        const path = `/${[prefix, sub].filter((p) => p && p !== '/').join('/')}`.replace(/\/+/g, '/');
+        const path = `/${[prefix, sub].filter((p) => p && p !== '/').join('/')}`.replace(
+          /\/+/g,
+          '/',
+        );
         out.push({
           cls: cls as unknown as new () => object,
-          fn,
+          // `typeof fn === 'function'` lo estrecha a `Function`; para Reflect basta con una firma genérica.
+          fn: fn as RouteInfo['fn'],
           controller: cls.name,
           handler,
           method: HTTP_METHODS[methodIdx] ?? 'get',
           path,
-          doc: (Reflect.getMetadata(API_DOC_KEY, fn) ?? Reflect.getMetadata(API_DOC_KEY, cls)) as ApiDocMeta | undefined,
+          doc: (Reflect.getMetadata(API_DOC_KEY, fn) ?? Reflect.getMetadata(API_DOC_KEY, cls)) as
+            ApiDocMeta | undefined,
         });
       }
     }
@@ -84,9 +98,14 @@ export class OpenApiService {
 
     for (const r of this.routes()) {
       const { cls, fn } = r;
-      const authz = (Reflect.getMetadata(AUTHZ_KEY, fn) ?? Reflect.getMetadata(AUTHZ_KEY, cls)) as AuthzMeta | undefined;
-      const needsVerified = Boolean(Reflect.getMetadata(VERIFIED_EMAIL_KEY, fn) ?? Reflect.getMetadata(VERIFIED_EMAIL_KEY, cls));
-      const limits = (Reflect.getMetadata(RATE_LIMIT_KEY, fn) ?? Reflect.getMetadata(RATE_LIMIT_KEY, cls) ?? []) as RateLimitRule[];
+      const authz = (Reflect.getMetadata(AUTHZ_KEY, fn) ?? Reflect.getMetadata(AUTHZ_KEY, cls)) as
+        AuthzMeta | undefined;
+      const needsVerified = Boolean(
+        Reflect.getMetadata(VERIFIED_EMAIL_KEY, fn) ?? Reflect.getMetadata(VERIFIED_EMAIL_KEY, cls),
+      );
+      const limits = (Reflect.getMetadata(RATE_LIMIT_KEY, fn) ??
+        Reflect.getMetadata(RATE_LIMIT_KEY, cls) ??
+        []) as RateLimitRule[];
       const doc = r.doc;
       const tag = r.controller.replace(/Controller$/, '');
       tags.add(tag);
@@ -102,37 +121,60 @@ export class OpenApiService {
         const type = Number(key.split(':')[0]);
         const pipe = (arg.pipes ?? []).find((p): p is ZodPipe<unknown> => p instanceof ZodPipe);
         if (type === BODY && pipe) {
-          requestBody = { required: true, content: { 'application/json': { schema: toSchema(pipe.schema, 'input') } } };
+          requestBody = {
+            required: true,
+            content: { 'application/json': { schema: toSchema(pipe.schema, 'input') } },
+          };
         } else if (type === QUERY && pipe) {
           const obj = toSchema(pipe.schema, 'input') as { properties?: Json; required?: string[] };
           for (const [name, schema] of Object.entries(obj.properties ?? {})) {
-            parameters.push({ name, in: 'query', required: obj.required?.includes(name) ?? false, schema });
+            parameters.push({
+              name,
+              in: 'query',
+              required: obj.required?.includes(name) ?? false,
+              schema,
+            });
           }
         } else if (type === PARAM && arg.data) {
-          parameters.push({ name: arg.data, in: 'path', required: true, schema: pipe ? toSchema(pipe.schema, 'input') : { type: 'string' } });
+          parameters.push({
+            name: arg.data,
+            in: 'path',
+            required: true,
+            schema: pipe ? toSchema(pipe.schema, 'input') : { type: 'string' },
+          });
         }
       }
 
       // --- Respuestas ---
-      const successStatus = (Reflect.getMetadata(HTTP_CODE_METADATA, fn) as number | undefined) ?? (r.method === 'post' ? 201 : 200);
+      const successStatus =
+        (Reflect.getMetadata(HTTP_CODE_METADATA, fn) as number | undefined) ??
+        (r.method === 'post' ? 201 : 200);
       const responses: Record<string, Json> = {
         [String(successStatus)]:
           doc?.response == null
             ? { description: 'Sin contenido' }
-            : { description: 'Correcto', content: { 'application/json': { schema: toSchema(doc.response, 'output') } } },
+            : {
+                description: 'Correcto',
+                content: { 'application/json': { schema: toSchema(doc.response, 'output') } },
+              },
       };
       const err = (status: number, description: string) => {
         responses[String(status)] = {
           description,
-          content: { 'application/problem+json': { schema: { $ref: '#/components/schemas/Problem' } } },
+          content: {
+            'application/problem+json': { schema: { $ref: '#/components/schemas/Problem' } },
+          },
         };
       };
       if (requestBody || parameters.length > 0) err(400, 'Datos inválidos (VALIDATION_ERROR)');
-      if (authz && authz.kind !== 'public') err(401, 'No autenticado o sesión inválida (UNAUTHENTICATED / TOKEN_INVALID)');
-      if (authz?.kind === 'permissions') err(403, 'Sin permiso o sin empresa activa (FORBIDDEN / TENANT_REQUIRED)');
+      if (authz && authz.kind !== 'public')
+        err(401, 'No autenticado o sesión inválida (UNAUTHENTICATED / TOKEN_INVALID)');
+      if (authz?.kind === 'permissions')
+        err(403, 'Sin permiso o sin empresa activa (FORBIDDEN / TENANT_REQUIRED)');
       err(429, 'Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After');
       err(500, 'Error interno (INTERNAL_ERROR)');
-      for (const [status, description] of Object.entries(doc?.errors ?? {})) err(Number(status), description);
+      for (const [status, description] of Object.entries(doc?.errors ?? {}))
+        err(Number(status), description);
 
       const pathKey = r.path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
       (paths[pathKey] ??= {})[r.method] = {
@@ -195,5 +237,10 @@ export class OpenApiController {
   }
 }
 
-@Module({ imports: [DiscoveryModule], controllers: [OpenApiController], providers: [OpenApiService], exports: [OpenApiService] })
+@Module({
+  imports: [DiscoveryModule],
+  controllers: [OpenApiController],
+  providers: [OpenApiService],
+  exports: [OpenApiService],
+})
 export class OpenApiModule {}

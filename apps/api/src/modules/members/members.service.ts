@@ -29,7 +29,9 @@ const toView = (m: MemberRow): MemberView => ({
   email: m.users.email,
   fullName: m.users.full_name,
   status: m.status as MemberView['status'],
-  roles: m.membership_roles.map((r) => ({ key: r.roles.key, name: r.roles.name })).sort((a, b) => a.key.localeCompare(b.key)),
+  roles: m.membership_roles
+    .map((r) => ({ key: r.roles.key, name: r.roles.name }))
+    .sort((a, b) => a.key.localeCompare(b.key)),
   createdAt: m.created_at.toISOString(),
 });
 
@@ -87,7 +89,10 @@ export class MembersService {
       // Serializa a los propietarios activos (orden fijo por id => sin deadlocks) antes de decidir nada.
       await this.lockActiveOwners(tx);
 
-      const target = await tx.tenant_memberships.findFirst({ where: { id: membershipId }, include: memberInclude });
+      const target = await tx.tenant_memberships.findFirst({
+        where: { id: membershipId },
+        include: memberInclude,
+      });
       if (!target) throw Errors.notFound('Miembro');
 
       const currentRoleIds = target.membership_roles.map((r) => r.roles.id);
@@ -99,18 +104,27 @@ export class MembersService {
         const keys = [...new Set(dto.roleKeys)];
         const roles = await tx.roles.findMany({ where: { key: { in: keys } } });
         if (roles.length !== keys.length) {
-          throw Errors.validation([{ path: 'roleKeys', message: 'Uno o más roles no existen en la empresa' }]);
+          throw Errors.validation([
+            { path: 'roleKeys', message: 'Uno o más roles no existen en la empresa' },
+          ]);
         }
-        const perms = await permissionsOfRoles(tx, roles.map((r) => r.id));
+        const perms = await permissionsOfRoles(
+          tx,
+          roles.map((r) => r.id),
+        );
         if (!canHold(actor.permissions, perms)) throw Errors.roleNotAllowed();
         newRoleIds = roles.map((r) => r.id);
       }
       const newStatus = dto.status ?? (target.status as 'active' | 'disabled');
 
       // ¿Dejaría de ser propietario activo?
-      const ownerRoleId = (await tx.roles.findFirst({ where: { key: 'owner' }, select: { id: true } }))?.id;
-      const wasActiveOwner = target.status === 'active' && !!ownerRoleId && currentRoleIds.includes(ownerRoleId);
-      const staysActiveOwner = newStatus === 'active' && !!ownerRoleId && newRoleIds.includes(ownerRoleId);
+      const ownerRoleId = (
+        await tx.roles.findFirst({ where: { key: 'owner' }, select: { id: true } })
+      )?.id;
+      const wasActiveOwner =
+        target.status === 'active' && !!ownerRoleId && currentRoleIds.includes(ownerRoleId);
+      const staysActiveOwner =
+        newStatus === 'active' && !!ownerRoleId && newRoleIds.includes(ownerRoleId);
       if (wasActiveOwner && !staysActiveOwner) {
         const others = await tx.tenant_memberships.count({
           where: {
@@ -125,14 +139,24 @@ export class MembersService {
       if (dto.roleKeys) {
         await tx.membership_roles.deleteMany({ where: { membership_id: target.id } });
         await tx.membership_roles.createMany({
-          data: newRoleIds.map((role_id) => ({ tenant_id: actor.tenantId, membership_id: target.id, role_id })),
+          data: newRoleIds.map((role_id) => ({
+            tenant_id: actor.tenantId,
+            membership_id: target.id,
+            role_id,
+          })),
         });
       }
       if (dto.status && dto.status !== target.status) {
-        await tx.tenant_memberships.update({ where: { id: target.id }, data: { status: dto.status } });
+        await tx.tenant_memberships.update({
+          where: { id: target.id },
+          data: { status: dto.status },
+        });
       }
 
-      const after = await tx.tenant_memberships.findFirstOrThrow({ where: { id: target.id }, include: memberInclude });
+      const after = await tx.tenant_memberships.findFirstOrThrow({
+        where: { id: target.id },
+        include: memberInclude,
+      });
       await this.audit.record(tx, {
         action: 'member.updated',
         entityType: 'membership',

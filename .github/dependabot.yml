@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Un solo PR con las actualizaciones menores y de parche (menos ruido).
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Prisma se mantiene fijado a una versión estable verificada (ver CLAUDE.md); se sube a mano.
+      - dependency-name: prisma
+      - dependency-name: '@prisma/*'
+      # TypeScript 6+/7 aún no es compatible con typescript-eslint (ver ADR-009).
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

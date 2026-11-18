@@ -9,7 +9,9 @@ const notified = ref(false);
 <template>
   <section aria-labelledby="reserva">
     <h2 id="reserva">Reserva online</h2>
-    <p>La reserva online de <strong>{{ name }}</strong> estará disponible muy pronto.</p>
+    <p>
+      La reserva online de <strong>{{ name }}</strong> estará disponible muy pronto.
+    </p>
     <button type="button" :aria-pressed="notified" @click="notified = !notified">
       {{ notified ? 'Te avisaremos' : 'Avísame cuando esté listo' }}
     </button>

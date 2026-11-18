@@ -34,9 +34,28 @@ async function submit() {
   <h1>Crea tu empresa</h1>
   <AlertBox v-if="error" kind="error">{{ error }}</AlertBox>
   <form class="card" novalidate @submit.prevent="submit">
-    <FormField v-model="businessName" label="Nombre del negocio" autocomplete="organization" required :error="fieldErrors['businessName'] ?? fieldErrors['slug']" />
-    <FormField v-model="fullName" label="Tu nombre" autocomplete="name" required :error="fieldErrors['fullName']" />
-    <FormField v-model="email" label="Email" type="email" autocomplete="username" required :error="fieldErrors['email']" />
+    <FormField
+      v-model="businessName"
+      label="Nombre del negocio"
+      autocomplete="organization"
+      required
+      :error="fieldErrors['businessName'] ?? fieldErrors['slug']"
+    />
+    <FormField
+      v-model="fullName"
+      label="Tu nombre"
+      autocomplete="name"
+      required
+      :error="fieldErrors['fullName']"
+    />
+    <FormField
+      v-model="email"
+      label="Email"
+      type="email"
+      autocomplete="username"
+      required
+      :error="fieldErrors['email']"
+    />
     <FormField
       v-model="password"
       label="Contraseña"
@@ -46,7 +65,11 @@ async function submit() {
       hint="Mínimo 10 caracteres."
       :error="fieldErrors['password']"
     />
-    <button class="primary" type="submit" :disabled="loading || !email || !password || !fullName || !businessName">
+    <button
+      class="primary"
+      type="submit"
+      :disabled="loading || !email || !password || !fullName || !businessName"
+    >
       {{ loading ? 'Creando…' : 'Crear cuenta' }}
     </button>
   </form>

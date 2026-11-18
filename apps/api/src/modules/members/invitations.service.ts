@@ -73,12 +73,20 @@ export class InvitationsService {
 
     const { view, tenantName, roleName } = await this.tdb.runAsPrincipal(async (tx) => {
       const role = await tx.roles.findFirst({ where: { key: dto.roleKey } });
-      if (!role) throw Errors.validation([{ path: 'roleKey', message: 'El rol no existe en la empresa' }]);
+      if (!role)
+        throw Errors.validation([{ path: 'roleKey', message: 'El rol no existe en la empresa' }]);
       // Anti-escalada: solo se invita con roles cuyos permisos el actor también tiene.
-      if (!canHold(actor.permissions, await permissionsOfRoles(tx, [role.id]))) throw Errors.roleNotAllowed();
+      if (!canHold(actor.permissions, await permissionsOfRoles(tx, [role.id])))
+        throw Errors.roleNotAllowed();
 
-      const existingUser = await this.tdb.global.users.findUnique({ where: { email: dto.email }, select: { id: true } });
-      if (existingUser && (await tx.tenant_memberships.findFirst({ where: { user_id: existingUser.id } }))) {
+      const existingUser = await this.tdb.global.users.findUnique({
+        where: { email: dto.email },
+        select: { id: true },
+      });
+      if (
+        existingUser &&
+        (await tx.tenant_memberships.findFirst({ where: { user_id: existingUser.id } }))
+      ) {
         throw Errors.alreadyMember();
       }
 
@@ -94,7 +102,8 @@ export class InvitationsService {
       const pendingCount = await tx.invitations.count({
         where: { accepted_at: null, revoked_at: null, expires_at: { gt: now } },
       });
-      if (pendingCount >= MAX_PENDING_INVITATIONS) throw Errors.limitReached('invitaciones pendientes');
+      if (pendingCount >= MAX_PENDING_INVITATIONS)
+        throw Errors.limitReached('invitaciones pendientes');
 
       const created = await tx.invitations.create({
         data: {
@@ -123,7 +132,13 @@ export class InvitationsService {
     });
 
     // El correo se envía DESPUÉS de confirmar la transacción: si falla, la invitación existe y se puede reenviar.
-    const emailSent = await this.sendEmail({ to: dto.email, tenantName, roleName, token, inviterName: actor.fullName });
+    const emailSent = await this.sendEmail({
+      to: dto.email,
+      tenantName,
+      roleName,
+      token,
+      inviterName: actor.fullName,
+    });
     return { invitation: view, emailSent };
   }
 
@@ -146,7 +161,11 @@ export class InvitationsService {
         data: { revoked_at: new Date() },
       });
       if (res.count !== 1) throw Errors.notFound('Invitación');
-      await this.audit.record(tx, { action: 'invitation.revoked', entityType: 'invitation', entityId: id });
+      await this.audit.record(tx, {
+        action: 'invitation.revoked',
+        entityType: 'invitation',
+        entityId: id,
+      });
     });
   }
 
@@ -159,14 +178,21 @@ export class InvitationsService {
     const { view, tenantName, roleName, email } = await this.tdb.runAsPrincipal(async (tx) => {
       const updated = await tx.invitations.updateMany({
         where: { id, accepted_at: null, revoked_at: null },
-        data: { token_hash: hash, expires_at: new Date(now.getTime() + INVITATION_TTL_DAYS * 86_400_000) },
+        data: {
+          token_hash: hash,
+          expires_at: new Date(now.getTime() + INVITATION_TTL_DAYS * 86_400_000),
+        },
       });
       if (updated.count !== 1) throw Errors.notFound('Invitación');
       const inv = await tx.invitations.findFirstOrThrow({
         where: { id },
         include: { roles: { select: { key: true, name: true } } },
       });
-      await this.audit.record(tx, { action: 'invitation.resent', entityType: 'invitation', entityId: id });
+      await this.audit.record(tx, {
+        action: 'invitation.resent',
+        entityType: 'invitation',
+        entityId: id,
+      });
       const tenant = await tx.tenants.findFirstOrThrow({ select: { name: true } });
       return {
         view: this.toView(inv, inv.roles.key, inv.roles.name, now),
@@ -176,7 +202,13 @@ export class InvitationsService {
       };
     });
 
-    const emailSent = await this.sendEmail({ to: email, tenantName, roleName, token, inviterName: actor.fullName });
+    const emailSent = await this.sendEmail({
+      to: email,
+      tenantName,
+      roleName,
+      token,
+      inviterName: actor.fullName,
+    });
     return { invitation: view, emailSent };
   }
 
@@ -185,11 +217,22 @@ export class InvitationsService {
   // ===============================================================================================
   async preview(token: string): Promise<InvitationPreview> {
     const inv = await this.resolveUsable(token);
-    const user = await this.tdb.global.users.findUnique({ where: { email: inv.email }, select: { id: true } });
-    return { tenantName: inv.tenant_name, roleName: inv.role_name, email: inv.email, accountExists: !!user };
+    const user = await this.tdb.global.users.findUnique({
+      where: { email: inv.email },
+      select: { id: true },
+    });
+    return {
+      tenantName: inv.tenant_name,
+      roleName: inv.role_name,
+      email: inv.email,
+      accountExists: !!user,
+    };
   }
 
-  async accept(dto: AcceptInvitationRequest, client: ClientInfo): Promise<{
+  async accept(
+    dto: AcceptInvitationRequest,
+    client: ClientInfo,
+  ): Promise<{
     body: AcceptInvitationResponse;
     refreshToken?: string;
   }> {
@@ -199,8 +242,16 @@ export class InvitationsService {
     let passwordHash: string | undefined;
     if (!existing) {
       const missing: { path: string; message: string }[] = [];
-      if (!dto.fullName) missing.push({ path: 'fullName', message: 'El nombre es obligatorio para crear la cuenta' });
-      if (!dto.password) missing.push({ path: 'password', message: 'La contraseña es obligatoria para crear la cuenta' });
+      if (!dto.fullName)
+        missing.push({
+          path: 'fullName',
+          message: 'El nombre es obligatorio para crear la cuenta',
+        });
+      if (!dto.password)
+        missing.push({
+          path: 'password',
+          message: 'La contraseña es obligatoria para crear la cuenta',
+        });
       if (missing.length > 0) throw Errors.validation(missing);
       passwordHash = await this.passwords.hash(dto.password!);
     }
@@ -210,16 +261,25 @@ export class InvitationsService {
       await this.tdb.run({ tenantId: inv.tenant_id }, async (tx) => {
         // Reclamo atómico: si dos personas usan el mismo token a la vez, solo una gana.
         const claimed = await tx.invitations.updateMany({
-          where: { id: inv.id, accepted_at: null, revoked_at: null, expires_at: { gt: new Date() } },
+          where: {
+            id: inv.id,
+            accepted_at: null,
+            revoked_at: null,
+            expires_at: { gt: new Date() },
+          },
           data: { accepted_at: new Date() },
         });
         if (claimed.count !== 1) throw Errors.invitationInvalid();
 
         if (existing) {
-          if (await tx.tenant_memberships.findFirst({ where: { user_id: existing.id } })) throw Errors.alreadyMember();
+          if (await tx.tenant_memberships.findFirst({ where: { user_id: existing.id } }))
+            throw Errors.alreadyMember();
           // El token llegó a su buzón: queda demostrado el control del email.
           if (!existing.email_verified_at) {
-            await tx.users.update({ where: { id: existing.id }, data: { email_verified_at: new Date() } });
+            await tx.users.update({
+              where: { id: existing.id },
+              data: { email_verified_at: new Date() },
+            });
           }
         } else {
           await tx.users.create({
@@ -234,7 +294,9 @@ export class InvitationsService {
         }
 
         const membershipId = uuidv7();
-        await tx.tenant_memberships.create({ data: { id: membershipId, tenant_id: inv.tenant_id, user_id: userId } });
+        await tx.tenant_memberships.create({
+          data: { id: membershipId, tenant_id: inv.tenant_id, user_id: userId },
+        });
         await tx.membership_roles.create({
           data: { tenant_id: inv.tenant_id, membership_id: membershipId, role_id: inv.role_id },
         });
@@ -249,7 +311,8 @@ export class InvitationsService {
       });
     } catch (err) {
       // Carrera: otro registro creó esa cuenta entre la lectura y la escritura.
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') throw Errors.emailTaken();
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
+        throw Errors.emailTaken();
       throw err;
     }
 
@@ -273,7 +336,13 @@ export class InvitationsService {
       SELECT * FROM rp_resolve_invitation(${hashToken(token)})`;
     const inv = rows[0];
     // Misma respuesta para token inexistente, usado, revocado, vencido o de empresa suspendida.
-    if (!inv || inv.accepted_at || inv.revoked_at || inv.expires_at <= new Date() || inv.tenant_status !== 'active') {
+    if (
+      !inv ||
+      inv.accepted_at ||
+      inv.revoked_at ||
+      inv.expires_at <= new Date() ||
+      inv.tenant_status !== 'active'
+    ) {
       throw Errors.invitationInvalid();
     }
     return inv;
@@ -324,4 +393,3 @@ export class InvitationsService {
     }
   }
 }
-
