@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ianaTimezone } from './auth.js';
+import { uuid } from './common.js';
 
 export const updateTenantRequest = z
   .object({
@@ -12,3 +13,16 @@ export const updateTenantRequest = z
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'Debe indicar al menos un campo' });
 export type UpdateTenantRequest = z.infer<typeof updateTenantRequest>;
+
+export const tenantView = z.object({
+  id: uuid,
+  name: z.string(),
+  legalName: z.string().nullable(),
+  taxId: z.string().nullable(),
+  slug: z.string(),
+  status: z.enum(['active', 'suspended', 'cancelled']),
+  timezone: z.string(),
+  currency: z.string(),
+  createdAt: z.string(),
+});
+export type TenantView = z.infer<typeof tenantView>;

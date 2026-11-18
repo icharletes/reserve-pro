@@ -1,3 +1,5 @@
+import { ApiDoc } from '../../platform/openapi/api-doc.decorator.js';
+import { auditLogView, pageOf } from '@reservepro/contracts';
 import { Controller, Get, Injectable, Module, Query } from '@nestjs/common';
 import { type AuditLogView, type AuditQuery, auditQuery } from '@reservepro/contracts';
 import { type Page, decodeCursor, toPage } from '../../common/pagination.js';
@@ -65,6 +67,7 @@ export class AuditLogsService {
 export class AuditLogsController {
   constructor(private readonly service: AuditLogsService) {}
 
+  @ApiDoc({ summary: 'Consultar la auditoría de la empresa', description: 'De lo más reciente a lo más antiguo. Filtros por acción, entidad, actor y fechas; paginado por cursor.', response: pageOf(auditLogView) })
   @RequirePermissions('audit:read')
   @Get()
   list(@Query(new ZodPipe(auditQuery)) query: AuditQuery) {

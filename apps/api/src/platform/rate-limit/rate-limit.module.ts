@@ -26,7 +26,7 @@ export interface RateLimitRule {
   by: RateLimitBy;
 }
 
-const RATE_LIMIT_KEY = 'reservepro:ratelimit';
+export const RATE_LIMIT_KEY = 'reservepro:ratelimit';
 
 /** Reglas por endpoint. Se evalúan ADEMÁS de la regla global por IP. */
 export const RateLimit = (...rules: RateLimitRule[]) => SetMetadata(RATE_LIMIT_KEY, rules);

@@ -5,7 +5,8 @@ import { Errors } from './errors.js';
 /** Valida y transforma el valor con un esquema Zod de `@reservepro/contracts`. Uso: `@Body(new ZodPipe(schema))`. */
 @Injectable()
 export class ZodPipe<T> implements PipeTransform<unknown, T> {
-  constructor(private readonly schema: ZodType<T>) {}
+  /** `schema` es público: el generador de OpenAPI lo lee para documentar la petición sin duplicarla. */
+  constructor(readonly schema: ZodType<T>) {}
 
   transform(value: unknown): T {
     const result = this.schema.safeParse(value);

@@ -20,6 +20,7 @@ import {
   RateLimitModule,
 } from './platform/rate-limit/rate-limit.module.js';
 import { RedisModule } from './platform/redis/redis.module.js';
+import { OpenApiModule } from './platform/openapi/openapi.service.js';
 import { RbacModule } from './platform/rbac/rbac.module.js';
 
 @Module({
@@ -50,6 +51,7 @@ import { RbacModule } from './platform/rbac/rbac.module.js';
     MembersModule,
     AuditLogsModule,
     HealthModule,
+    OpenApiModule,
   ],
   providers: [
     // El ORDEN importa: límite por IP (barato, protege la BD) -> autenticación -> límite por usuario/empresa -> permisos.

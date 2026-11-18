@@ -22,6 +22,8 @@ export const problem = z.object({
   code: z.string(),
   detail: z.string().optional(),
   requestId: z.string().optional(),
+  /** Errores por campo (solo en VALIDATION_ERROR). */
+  errors: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
 });
 export type Problem = z.infer<typeof problem>;
 
@@ -55,3 +57,7 @@ export const ERROR_CODES = [
   'LINK_INVALID',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/** Respuesta paginada por cursor: `nextCursor` es null cuando no hay más resultados. */
+export const pageOf = <T extends z.ZodType>(item: T) =>
+  z.object({ items: z.array(item), nextCursor: z.string().nullable() });
