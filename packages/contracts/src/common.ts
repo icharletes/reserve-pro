@@ -34,5 +34,14 @@ export const ERROR_CODES = [
   'FORBIDDEN',
   'NOT_FOUND',
   'VALIDATION_ERROR',
+  'UNAUTHENTICATED',
+  'INVALID_CREDENTIALS',
+  'TOKEN_INVALID',
+  'TENANT_REQUIRED',
+  'CSRF_REJECTED',
+  'EMAIL_TAKEN',
+  'SLUG_TAKEN',
+  'TOO_MANY_ATTEMPTS',
+  'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

@@ -184,6 +184,44 @@ describe('membresías propias del usuario (login, sin tenant activo)', () => {
   });
 });
 
+describe('usuario con membresías en varias empresas (regresión migración 0002)', () => {
+  const uC = randomUUID();
+  const mCA = randomUUID();
+  const mCB = randomUUID();
+
+  beforeAll(async () => {
+    await owner.query(`INSERT INTO users(id,email,password_hash,full_name) VALUES ($1,'c@c.test','h','User C')`, [uC]);
+    await owner.query(
+      `INSERT INTO tenant_memberships(id,tenant_id,user_id) VALUES ($1,$2,$3),($4,$5,$3)`,
+      [mCA, ids.tA, uC, mCB, ids.tB],
+    );
+  });
+  afterAll(async () => {
+    await owner.query(`DELETE FROM tenant_memberships WHERE user_id=$1`, [uC]);
+    await owner.query(`DELETE FROM users WHERE id=$1`, [uC]);
+  });
+
+  it('SIN tenant activo ve todas SUS empresas y membresías (selector de empresa al hacer login)', async () => {
+    const ts = await withUser(db, uC, (tx) => tx.tenants.findMany({ orderBy: { slug: 'asc' } }));
+    expect(ts.map((t) => t.slug)).toEqual(['tenant-a', 'tenant-b']);
+    const ms = await withUser(db, uC, (tx) => tx.tenant_memberships.count());
+    expect(ms).toBe(2);
+  });
+
+  it('CON tenant activo ve SOLO ese tenant, aunque el contexto también incluya al usuario', async () => {
+    const ts = await withTenant(db, { tenantId: ids.tA, userId: uC }, (tx) => tx.tenants.findMany());
+    expect(ts.map((t) => t.slug)).toEqual(['tenant-a']);
+
+    const ms = await withTenant(db, { tenantId: ids.tB, userId: uC }, (tx) => tx.tenant_memberships.findMany());
+    expect(ms.every((m) => m.tenant_id === ids.tB)).toBe(true);
+  });
+
+  it('un findFirst sin WHERE bajo un tenant activo devuelve ese tenant, no otro del usuario', async () => {
+    const t = await withTenant(db, { tenantId: ids.tB, userId: uC }, (tx) => tx.tenants.findFirst());
+    expect(t?.id).toBe(ids.tB);
+  });
+});
+
 describe('auditoría', () => {
   it('se puede insertar bajo el tenant propio y es visible solo para ese tenant', async () => {
     await withTenant(db, { tenantId: ids.tA }, (tx) =>

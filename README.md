@@ -14,12 +14,15 @@ Node ≥ 20.15, pnpm 9 (`corepack enable`), Docker Desktop.
 cp .env.example .env
 pnpm install
 pnpm db:up          # Postgres 16, Redis 7, Mailpit (UI en http://localhost:8025)
-pnpm test
+pnpm --filter @reservepro/database db:migrate   # aplica las migraciones a la base local
+pnpm test           # 95 tests (requiere Docker arriba)
+pnpm --filter @reservepro/api build && pnpm --filter @reservepro/api start   # API en http://localhost:3000
 ```
+> Requiere **Node ≥ 22.12**. Salud: `GET /health` y `GET /health/ready`. API bajo `/api/v1`.
 
 ## Estructura
 ```
-apps/        api (NestJS), web (Astro), admin (Vue SPA)   — por crear en la Fase 1
-packages/    config, contracts, booking-domain             — ui, database, api-client por crear
+apps/        api (NestJS)                                  — web (Astro) y admin (Vue SPA) por crear
+packages/    config, contracts, booking-domain, database   — ui, api-client por crear
 docs/        architecture, decisions
 ```

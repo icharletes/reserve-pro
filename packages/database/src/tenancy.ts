@@ -6,7 +6,10 @@ export type Tx = Prisma.TransactionClient;
 export interface TenantContext {
   /** Tenant activo. Debe provenir del token validado o de la resolución por slug, NUNCA del body/query. */
   tenantId: string;
-  /** Usuario autenticado (permite leer sus propias membresías). Opcional en flujos públicos. */
+  /**
+   * Usuario autenticado. Con tenant activo NO amplía la visibilidad (las políticas "propias" solo aplican
+   * sin tenant, migración 0002); se acepta por compatibilidad. Para listar las empresas del usuario use `withUser`.
+   */
   userId?: string;
 }
 

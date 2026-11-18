@@ -13,3 +13,4 @@ Una decisión **no se borra**: si cambia, se crea un ADR nuevo que la reemplaza 
 | [006](006-capacidad-mayor-a-uno-diferida.md) | Capacidad de recurso > 1 diferida | Aceptado |
 | [007](007-supuestos-de-negocio-mvp.md) | Supuestos de negocio por defecto del MVP | Aceptado |
 | [008](008-hosting-local-primero.md) | Hosting: desarrollo local en Docker; producción pendiente | Aceptado (parcial) |
+| [009](009-stack-api-nestjs.md) | Stack de la API: NestJS 12 (ESM), TS 5.9, Zod propio, autorización fail-closed | Aceptado |

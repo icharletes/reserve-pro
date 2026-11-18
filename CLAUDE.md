@@ -33,5 +33,13 @@ Entorno: **Node ≥ 22.12** (Prisma 7 exige ≥ 20.19; Node 20 está fuera de so
 Fase 0 cerrada (ADRs). Fase 1 en curso:
 - ✔ Monorepo, Docker, `booking-domain`, `contracts`.
 - ✔ `packages/database`: migración 0001 (SaaS, acceso, RBAC, auditoría, RLS), `withTenant`/`withUser`, 23 tests de aislamiento.
-- ☐ `apps/api` (NestJS): config, errores, auth, tenants, RBAC, auditoría.
-- ☐ Esqueletos `apps/web` y `apps/admin`; CI.
+- ✔ `apps/api` (NestJS 12): config validada, errores Problem+JSON, auth (register/login/refresh con rotación/logout/switch-tenant/me), RBAC fail-closed con 38 permisos y 5 roles, auditoría transaccional, tenants (GET/PATCH current), health. 60 tests e2e + unitarios.
+- ✔ Migración 0002: políticas "propias" solo sin tenant activo (bug de aislamiento hallado por el e2e).
+- ☐ Pendiente Fase 1: invitaciones y miembros, recuperación de contraseña, consulta de auditoría, rate limiting (Redis), OpenAPI, entrypoint `worker.ts`, esqueletos `apps/web` y `apps/admin`, CI (GitHub Actions) y lint (ESLint + boundaries).
+
+## Reglas de código de la API
+- Todo endpoint declara `@Public()`, `@Authenticated()` o `@RequirePermissions()`; sin eso no se ejecuta.
+- Datos de negocio solo vía `TenantDb.runAsPrincipal(tx => …)` (solo `tenantId`; nunca `userId` con tenant activo). `TenantDb.global` solo para tablas sin RLS.
+- Auditoría con `AuditService.record(tx, …)` dentro de la MISMA transacción del cambio.
+- Imports con extensión `.js` (ESM). Tests e2e: `apps/api/test/`, base propia `reservepro_api_test`.
+- Build: `turbo` ejecuta `generate` (Prisma) antes de `build`/`typecheck`/`test`.
