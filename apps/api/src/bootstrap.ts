@@ -19,6 +19,8 @@ export function configureApp(app: INestApplication): void {
   const config = app.get(AppConfig);
   const logger = app.get<Logger>(LOGGER);
 
+  // Sin esto, detrás de un proxy/balanceador TODOS los clientes compartirían la IP del proxy (y el rate limit).
+  app.getHttpAdapter().getInstance().set('trust proxy', config.env.TRUST_PROXY);
   app.setGlobalPrefix(API_PREFIX, { exclude: ['health', 'health/ready'] });
   app.use(helmet());
   app.use(cookieParser());

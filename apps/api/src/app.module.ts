@@ -4,6 +4,7 @@ import { ClsModule } from 'nestjs-cls';
 import type { Request } from 'express';
 import { ProblemFilter } from './common/problem.filter.js';
 import { ConfigModule } from './config/app-config.js';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module.js';
 import { MembersModule } from './modules/members/members.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { TenantsModule } from './modules/tenants/tenants.module.js';
@@ -13,6 +14,12 @@ import { AuthModule } from './platform/auth/auth.module.js';
 import { DatabaseModule } from './platform/database/database.module.js';
 import { EmailModule } from './platform/email/email.module.js';
 import { LoggingModule } from './platform/logging/logger.js';
+import {
+  PostAuthRateLimitGuard,
+  PreAuthRateLimitGuard,
+  RateLimitModule,
+} from './platform/rate-limit/rate-limit.module.js';
+import { RedisModule } from './platform/redis/redis.module.js';
 import { RbacModule } from './platform/rbac/rbac.module.js';
 
 @Module({
@@ -32,6 +39,8 @@ import { RbacModule } from './platform/rbac/rbac.module.js';
     }),
     ConfigModule,
     LoggingModule,
+    RedisModule,
+    RateLimitModule,
     DatabaseModule,
     RbacModule,
     AuditModule,
@@ -39,11 +48,14 @@ import { RbacModule } from './platform/rbac/rbac.module.js';
     AuthModule,
     TenantsModule,
     MembersModule,
+    AuditLogsModule,
     HealthModule,
   ],
   providers: [
-    // El ORDEN importa: primero autenticación, luego autorización.
+    // El ORDEN importa: límite por IP (barato, protege la BD) -> autenticación -> límite por usuario/empresa -> permisos.
+    { provide: APP_GUARD, useClass: PreAuthRateLimitGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: PostAuthRateLimitGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_FILTER, useClass: ProblemFilter },
   ],

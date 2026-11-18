@@ -50,5 +50,8 @@ export const ERROR_CODES = [
   'ROLE_NOT_ALLOWED',
   'LIMIT_REACHED',
   'ALREADY_INVITED',
+  'RATE_LIMITED',
+  'EMAIL_NOT_VERIFIED',
+  'LINK_INVALID',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

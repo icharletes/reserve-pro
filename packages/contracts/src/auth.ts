@@ -57,7 +57,7 @@ export const authResponse = z.object({
   accessToken: z.string(),
   /** Segundos de vida del access token. */
   expiresIn: z.number().int(),
-  user: z.object({ id: uuid, email: z.string(), fullName: z.string() }),
+  user: z.object({ id: uuid, email: z.string(), fullName: z.string(), emailVerified: z.boolean() }),
   /** Empresa activa del token; null si el usuario debe elegir una. */
   activeTenantId: uuid.nullable(),
   memberships: z.array(membershipSummary),
@@ -65,7 +65,13 @@ export const authResponse = z.object({
 export type AuthResponse = z.infer<typeof authResponse>;
 
 export const meResponse = z.object({
-  user: z.object({ id: uuid, email: z.string(), fullName: z.string(), isPlatformAdmin: z.boolean() }),
+  user: z.object({
+    id: uuid,
+    email: z.string(),
+    fullName: z.string(),
+    isPlatformAdmin: z.boolean(),
+    emailVerified: z.boolean(),
+  }),
   tenant: z
     .object({ id: uuid, name: z.string(), slug: z.string(), timezone: z.string(), currency: z.string() })
     .nullable(),
@@ -74,3 +80,23 @@ export const meResponse = z.object({
   permissions: z.array(z.string()),
 });
 export type MeResponse = z.infer<typeof meResponse>;
+
+// --- Recuperación y cambio de contraseña, verificación de email ---------------------------------
+const opaqueToken = z.string().min(20).max(200);
+
+export const forgotPasswordRequest = z.object({ email });
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequest>;
+
+export const resetPasswordRequest = z.object({ token: opaqueToken, password });
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequest>;
+
+export const changePasswordRequest = z
+  .object({ currentPassword: z.string().min(1).max(128), newPassword: password })
+  .refine((v) => v.currentPassword !== v.newPassword, {
+    message: 'La nueva contraseña debe ser distinta de la actual',
+    path: ['newPassword'],
+  });
+export type ChangePasswordRequest = z.infer<typeof changePasswordRequest>;
+
+export const verifyEmailRequest = z.object({ token: opaqueToken });
+export type VerifyEmailRequest = z.infer<typeof verifyEmailRequest>;

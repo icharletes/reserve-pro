@@ -13,6 +13,7 @@ import { ROLE_TEMPLATES } from '../rbac/role-templates.js';
 import { uuidv7 } from '../../common/ids.js';
 import { Errors } from '../../common/errors.js';
 import { slugify, withRandomSuffix } from '../../modules/tenants/slug.js';
+import { AccountService } from './account.service.js';
 import { PasswordService } from './password.service.js';
 import { type ClientInfo, SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly sessions: SessionService,
     private readonly audit: AuditService,
+    private readonly account: AccountService,
   ) {}
 
   // ---------------------------------------------------------------------------------------------
@@ -83,7 +85,14 @@ export class AuthService {
 
     const session = await this.sessions.start(userId, tenantId, client);
     const memberships = await this.listMemberships(userId);
-    return this.buildResult({ id: userId, email: dto.email, fullName: dto.fullName }, memberships, tenantId, session);
+    // La cuenta nace SIN verificar: se envía el enlace de confirmación (en segundo plano).
+    await this.account.sendVerification({ id: userId, email: dto.email, fullName: dto.fullName });
+    return this.buildResult(
+      { id: userId, email: dto.email, fullName: dto.fullName, emailVerified: false },
+      memberships,
+      tenantId,
+      session,
+    );
   }
 
   private async isSlugAvailable(slug: string): Promise<boolean> {
@@ -204,7 +213,7 @@ export class AuthService {
 
     const session = await this.sessions.start(user.id, activeTenantId, client);
     return this.buildResult(
-      { id: user.id, email: user.email, fullName: user.full_name },
+      { id: user.id, email: user.email, fullName: user.full_name, emailVerified: user.email_verified_at !== null },
       memberships,
       activeTenantId,
       session,
@@ -213,7 +222,7 @@ export class AuthService {
 
   /** Inicia sesión directamente para un usuario ya verificado por otro medio (p.ej. aceptó una invitación). */
   async startSessionFor(
-    user: { id: string; email: string; fullName: string },
+    user: { id: string; email: string; fullName: string; emailVerified: boolean },
     activeTenantId: string,
     client: ClientInfo,
   ): Promise<AuthResult> {
@@ -240,7 +249,12 @@ export class AuthService {
       active = memberships.length === 1 ? memberships[0]!.tenantId : null;
       await this.sessions.setActiveTenant(issued.sessionId, active);
     }
-    return this.buildResult({ id: user.id, email: user.email, fullName: user.full_name }, memberships, active, issued);
+    return this.buildResult(
+      { id: user.id, email: user.email, fullName: user.full_name, emailVerified: user.email_verified_at !== null },
+      memberships,
+      active,
+      issued,
+    );
   }
 
   async logout(rawToken: string | undefined): Promise<void> {
@@ -263,7 +277,12 @@ export class AuthService {
     return {
       accessToken,
       expiresIn: this.tokens.accessTtlSeconds,
-      user: { id: principal.userId, email: principal.email, fullName: principal.fullName },
+      user: {
+        id: principal.userId,
+        email: principal.email,
+        fullName: principal.fullName,
+        emailVerified: principal.emailVerified,
+      },
       activeTenantId: tenantId,
       memberships,
     };
@@ -284,6 +303,7 @@ export class AuthService {
         email: principal.email,
         fullName: principal.fullName,
         isPlatformAdmin: principal.isPlatformAdmin,
+        emailVerified: principal.emailVerified,
       },
       tenant,
       membershipId: principal.membershipId,
@@ -312,7 +332,7 @@ export class AuthService {
   }
 
   private async buildResult(
-    user: { id: string; email: string; fullName: string },
+    user: { id: string; email: string; fullName: string; emailVerified: boolean },
     memberships: MembershipSummary[],
     activeTenantId: string | null,
     session: { token: string; sessionId: string },

@@ -6,7 +6,7 @@ import { type PermissionKey, isPermissionKey } from '@reservepro/contracts';
 import { AppError, Errors } from '../../common/errors.js';
 import { TenantDb } from '../database/database.module.js';
 import { LOGGER } from '../logging/logger.js';
-import { AUTHZ_KEY, type AuthzMeta } from '../rbac/authz.decorators.js';
+import { AUTHZ_KEY, type AuthzMeta, VERIFIED_EMAIL_KEY } from '../rbac/authz.decorators.js';
 import type { AuthedRequest, Principal } from './principal.js';
 import { type AccessClaims, TokenService } from './token.service.js';
 
@@ -66,6 +66,7 @@ export class AuthGuard implements CanActivate {
         email: user.email,
         fullName: user.full_name,
         isPlatformAdmin: user.is_platform_admin,
+        emailVerified: user.email_verified_at !== null,
         sessionId: claims.sid,
         tenantId: null,
         membershipId: null,
@@ -103,6 +104,7 @@ export class AuthGuard implements CanActivate {
       email: m.users.email,
       fullName: m.users.full_name,
       isPlatformAdmin: m.users.is_platform_admin,
+      emailVerified: m.users.email_verified_at !== null,
       sessionId: claims.sid,
       tenantId: tid,
       membershipId: mid,
@@ -123,10 +125,16 @@ export class PermissionsGuard implements CanActivate {
       context.getClass(),
     ]);
     if (!meta) throw new AppError(500, 'INTERNAL_ERROR', 'Endpoint sin política de autorización');
-    if (meta.kind !== 'permissions') return true; // public/authenticated ya resueltos por AuthGuard
+    if (meta.kind === 'public') return true;
 
     const principal = context.switchToHttp().getRequest<AuthedRequest>().principal;
     if (!principal) throw Errors.unauthenticated();
+    const needsVerified = this.reflector.getAllAndOverride<boolean | undefined>(VERIFIED_EMAIL_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (needsVerified && !principal.emailVerified) throw Errors.emailNotVerified();
+    if (meta.kind !== 'permissions') return true; // 'authenticated': basta con la sesión
     if (!principal.tenantId) throw Errors.tenantRequired();
     for (const required of meta.permissions) {
       if (!principal.permissions.has(required)) throw Errors.forbidden();

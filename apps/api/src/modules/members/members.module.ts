@@ -15,7 +15,8 @@ import { AppConfig } from '../../config/app-config.js';
 import { type PageQuery, pageQuery } from '../../common/pagination.js';
 import { ZodPipe } from '../../common/zod.pipe.js';
 import { AuthModule } from '../../platform/auth/auth.module.js';
-import { Public, RequirePermissions } from '../../platform/rbac/authz.decorators.js';
+import { RateLimit } from '../../platform/rate-limit/rate-limit.module.js';
+import { Public, RequirePermissions, RequireVerifiedEmail } from '../../platform/rbac/authz.decorators.js';
 import { InvitationsService } from './invitations.service.js';
 import { MembersService } from './members.service.js';
 
@@ -48,6 +49,11 @@ export class MembersController {
   }
 
   @RequirePermissions('members:invite')
+  @RequireVerifiedEmail()
+  @RateLimit(
+    { name: 'invite-user', limit: 30, windowSec: 3600, by: 'user' },
+    { name: 'invite-tenant', limit: 100, windowSec: 86_400, by: 'tenant' },
+  )
   @Post('invitations')
   createInvitation(@Body(new ZodPipe(createInvitationRequest)) body: CreateInvitationRequest) {
     return this.invitations.create(body);
@@ -60,6 +66,11 @@ export class MembersController {
   }
 
   @RequirePermissions('members:invite')
+  @RequireVerifiedEmail()
+  @RateLimit(
+    { name: 'invite-user', limit: 30, windowSec: 3600, by: 'user' },
+    { name: 'invite-tenant', limit: 100, windowSec: 86_400, by: 'tenant' },
+  )
   @Post('invitations/:id/resend')
   @HttpCode(200)
   resendInvitation(@Param('id', idParam) id: string) {
@@ -89,6 +100,7 @@ export class PublicInvitationsController {
   ) {}
 
   @Public()
+  @RateLimit({ name: 'invitation-public', limit: 30, windowSec: 900, by: 'ip' })
   @Post('preview')
   @HttpCode(200)
   preview(@Body(new ZodPipe(invitationTokenRequest)) body: InvitationTokenRequest) {
@@ -96,6 +108,7 @@ export class PublicInvitationsController {
   }
 
   @Public()
+  @RateLimit({ name: 'invitation-public', limit: 30, windowSec: 900, by: 'ip' })
   @Post('accept')
   async accept(
     @Body(new ZodPipe(acceptInvitationRequest)) body: AcceptInvitationRequest,

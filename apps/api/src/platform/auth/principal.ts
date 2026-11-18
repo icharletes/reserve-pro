@@ -7,6 +7,8 @@ export interface Principal {
   email: string;
   fullName: string;
   isPlatformAdmin: boolean;
+  /** El usuario demostró controlar su email (token recibido en su buzón). */
+  emailVerified: boolean;
   /** Sesión = familia de refresh tokens. Revocarla invalida el access token de inmediato. */
   sessionId: string;
   /** null cuando el usuario aún no eligió empresa. */

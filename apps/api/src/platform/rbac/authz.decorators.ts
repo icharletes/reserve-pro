@@ -22,3 +22,11 @@ export const Authenticated = () => SetMetadata(AUTHZ_KEY, { kind: 'authenticated
 /** Exige empresa activa y TODOS los permisos indicados. */
 export const RequirePermissions = (...permissions: PermissionKey[]) =>
   SetMetadata(AUTHZ_KEY, { kind: 'permissions', permissions } satisfies AuthzMeta);
+
+export const VERIFIED_EMAIL_KEY = 'reservepro:verified-email';
+
+/**
+ * Exige además que el usuario haya verificado su email. Se usa en acciones que pueden abusarse desde
+ * cuentas desechables (p.ej. enviar invitaciones por correo a terceros).
+ */
+export const RequireVerifiedEmail = () => SetMetadata(VERIFIED_EMAIL_KEY, true);

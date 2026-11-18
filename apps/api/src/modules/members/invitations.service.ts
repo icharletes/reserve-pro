@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import type { Logger } from 'pino';
@@ -13,6 +12,7 @@ import type {
 import { Prisma } from '@reservepro/database';
 import { AppConfig } from '../../config/app-config.js';
 import { Errors } from '../../common/errors.js';
+import { generateOneTimeToken, hashOneTimeToken } from '../../common/tokens.js';
 import { uuidv7 } from '../../common/ids.js';
 import { AuditService } from '../../platform/audit/audit.module.js';
 import { AuthService } from '../../platform/auth/auth.service.js';
@@ -29,12 +29,8 @@ const INVITATION_TTL_DAYS = 7;
 /** Tope de invitaciones pendientes por empresa: limita el uso de la plataforma como relé de correo. */
 const MAX_PENDING_INVITATIONS = 50;
 
-/** Token de 256 bits; en la BD solo se guarda su SHA-256 (igual que los refresh tokens). */
-function newToken(): { token: string; hash: Uint8Array<ArrayBuffer> } {
-  const token = randomBytes(32).toString('base64url');
-  return { token, hash: hashToken(token) };
-}
-const hashToken = (token: string): Uint8Array<ArrayBuffer> => Uint8Array.from(createHash('sha256').update(token).digest());
+const newToken = generateOneTimeToken;
+const hashToken = hashOneTimeToken;
 
 interface ResolvedInvitation {
   id: string;
@@ -261,7 +257,7 @@ export class InvitationsService {
       return { body: { outcome: 'joined', tenantName: inv.tenant_name } };
     }
     const session = await this.auth.startSessionFor(
-      { id: userId, email: inv.email, fullName: dto.fullName! },
+      { id: userId, email: inv.email, fullName: dto.fullName!, emailVerified: true },
       inv.tenant_id,
       client,
     );

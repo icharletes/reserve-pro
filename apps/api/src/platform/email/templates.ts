@@ -42,3 +42,29 @@ export function renderInvitationEmail(d: InvitationEmailData): EmailMessage {
 
   return { to: d.to, subject, text, html };
 }
+
+export interface ActionEmailData {
+  to: string;
+  subject: string;
+  /** Párrafos de texto plano (se escapan en el HTML). */
+  paragraphs: string[];
+  /** Botón de acción opcional. */
+  action?: { label: string; url: string };
+  footer?: string;
+}
+
+/** Plantilla genérica para correos transaccionales (verificación, recuperación, avisos de seguridad). */
+export function renderActionEmail(d: ActionEmailData): EmailMessage {
+  const subject = d.subject.replace(/[\r\n]+/g, ' ');
+  const text = [
+    ...d.paragraphs.flatMap((p) => [p, '']),
+    ...(d.action ? [`${d.action.label}:`, d.action.url, ''] : []),
+    ...(d.footer ? [d.footer] : []),
+  ].join('\n');
+  const html = `<!doctype html><html lang="es"><body style="font-family:Arial,sans-serif;color:#222">
+${d.paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join('\n')}
+${d.action ? `<p><a href="${escapeHtml(d.action.url)}" style="background:#2b59c3;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">${escapeHtml(d.action.label)}</a></p>` : ''}
+${d.footer ? `<p style="color:#666;font-size:13px">${escapeHtml(d.footer)}</p>` : ''}
+</body></html>`;
+  return { to: d.to, subject, text, html };
+}

@@ -15,6 +15,8 @@ export class AppError extends Error {
     readonly code: ErrorCode,
     message: string,
     readonly errors?: FieldError[],
+    /** Si se indica, el filtro responde con la cabecera `Retry-After`. */
+    readonly retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = 'AppError';
@@ -42,6 +44,13 @@ export const Errors = {
   roleNotAllowed: () =>
     new AppError(403, 'ROLE_NOT_ALLOWED', 'No puedes otorgar ni gestionar permisos superiores a los tuyos'),
   limitReached: (what: string) => new AppError(409, 'LIMIT_REACHED', `Se alcanzó el límite de ${what}`),
+  linkInvalid: () => new AppError(400, 'LINK_INVALID', 'El enlace no es válido o ya expiró'),
+  currentPasswordWrong: () =>
+    new AppError(400, 'INVALID_CREDENTIALS', 'La contraseña actual es incorrecta'),
+  rateLimited: (retryAfterSeconds: number) =>
+    new AppError(429, 'RATE_LIMITED', 'Demasiadas solicitudes. Intenta de nuevo en un momento', undefined, retryAfterSeconds),
+  emailNotVerified: () =>
+    new AppError(403, 'EMAIL_NOT_VERIFIED', 'Debes verificar tu email para realizar esta acción'),
   tooManyAttempts: () =>
     new AppError(429, 'TOO_MANY_ATTEMPTS', 'Demasiados intentos. Intenta de nuevo más tarde'),
   validation: (errors: FieldError[]) =>

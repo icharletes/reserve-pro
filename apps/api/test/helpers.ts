@@ -40,9 +40,16 @@ export function tokenFrom(message: EmailMessage | undefined): string {
   return match[1]!;
 }
 
-export async function createTestApp(extraControllers: Type[] = []): Promise<INestApplication> {
+export async function createTestApp(
+  extraControllers: Type[] = [],
+  options: { rateLimit?: boolean; env?: Record<string, string> } = {},
+): Promise<INestApplication> {
   process.env['NODE_ENV'] = 'test';
   process.env['LOG_LEVEL'] = 'silent';
+  // El rate limit se desactiva por defecto (las suites hacen decenas de logins desde la misma IP) y se activa
+  // solo en su propia suite. Se fija ANTES de construir la app, que lee el entorno al crearse.
+  process.env['RATE_LIMIT_ENABLED'] = options.rateLimit ? 'true' : 'false';
+  for (const [k, v] of Object.entries(options.env ?? {})) process.env[k] = v;
   process.env['JWT_ACCESS_SECRET'] ||= 'test-secret-that-is-at-least-32-characters-long';
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -60,6 +67,29 @@ export async function createTestApp(extraControllers: Type[] = []): Promise<INes
 /** Conexión con el rol dueño (bypass de RLS) para preparar y verificar datos que la API no expone. */
 export function ownerPool(): pg.Pool {
   return new pg.Pool({ connectionString: process.env['DATABASE_URL_OWNER'], max: 2 });
+}
+
+// Pool interno de los helpers: no retiene el proceso al terminar (allowExitOnIdle).
+let helperPool: pg.Pool | undefined;
+function adminDb(): pg.Pool {
+  helperPool ??= new pg.Pool({
+    connectionString: process.env['DATABASE_URL_OWNER'],
+    max: 2,
+    idleTimeoutMillis: 500,
+    allowExitOnIdle: true,
+  });
+  return helperPool;
+}
+
+/** Espera (hasta 3 s) a que llegue un email a `to`; los correos se envían en segundo plano. */
+export async function waitForMail(to: string, match?: (m: EmailMessage) => boolean): Promise<EmailMessage> {
+  const deadline = Date.now() + 3_000;
+  for (;;) {
+    const found = [...mailbox.sent].reverse().find((m) => m.to === to && (!match || match(m)));
+    if (found) return found;
+    if (Date.now() > deadline) throw new Error(`no llegó ningún email a ${to}`);
+    await new Promise((r) => setTimeout(r, 25));
+  }
 }
 
 export const http = (app: INestApplication) => request(app.getHttpServer());
@@ -82,7 +112,7 @@ export interface Registered {
 
 export async function register(
   app: INestApplication,
-  overrides: Partial<{ email: string; businessName: string; slug: string; password: string }> = {},
+  overrides: Partial<{ email: string; businessName: string; slug: string; password: string; verified: boolean }> = {},
 ): Promise<Registered> {
   const email = overrides.email ?? `user-${randomUUID().slice(0, 8)}@example.test`;
   const res = await http(app)
@@ -96,6 +126,10 @@ export async function register(
     });
   if (res.status !== 201) throw new Error(`register falló: ${res.status} ${JSON.stringify(res.body)}`);
   const body = res.body as AuthResponse;
+  // Por defecto el email queda verificado (la mayoría de las pruebas no tratan sobre eso).
+  if (overrides.verified !== false) {
+    await adminDb().query(`UPDATE users SET email_verified_at = now() WHERE email = $1`, [email]);
+  }
   return {
     body,
     email,

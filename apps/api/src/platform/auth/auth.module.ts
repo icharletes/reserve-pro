@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AccountService } from './account.service.js';
 import { AuthController, MeController } from './auth.controller.js';
 import { AuthGuard, PermissionsGuard } from './auth.guard.js';
 import { AuthService } from './auth.service.js';
@@ -8,7 +9,7 @@ import { TokenService } from './token.service.js';
 
 @Module({
   controllers: [AuthController, MeController],
-  providers: [AuthService, PasswordService, TokenService, SessionService, AuthGuard, PermissionsGuard],
-  exports: [AuthGuard, PermissionsGuard, AuthService, TokenService, SessionService, PasswordService],
+  providers: [AuthService, AccountService, PasswordService, TokenService, SessionService, AuthGuard, PermissionsGuard],
+  exports: [AuthGuard, PermissionsGuard, AuthService, AccountService, TokenService, SessionService, PasswordService],
 })
 export class AuthModule {}

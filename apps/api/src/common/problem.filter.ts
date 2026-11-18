@@ -31,12 +31,14 @@ export class ProblemFilter implements ExceptionFilter {
     let code: ErrorCode = 'INTERNAL_ERROR';
     let detail = 'Error interno';
     let errors: AppError['errors'];
+    let retryAfter: number | undefined;
 
     if (exception instanceof AppError) {
       status = exception.status;
       code = exception.code;
       detail = exception.message;
       errors = exception.errors;
+      retryAfter = exception.retryAfterSeconds;
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       code = STATUS_CODES[status] ?? 'INTERNAL_ERROR';
@@ -49,6 +51,7 @@ export class ProblemFilter implements ExceptionFilter {
       this.logger.error({ err: exception, requestId }, 'unhandled error');
     }
 
+    if (retryAfter !== undefined) res.setHeader('Retry-After', String(retryAfter));
     res
       .status(status)
       .type('application/problem+json')
