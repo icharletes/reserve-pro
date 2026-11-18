@@ -1,0 +1,33 @@
+---
+interface Props {
+  title: string;
+  /** Mientras no exista el portal real de cada negocio no se indexa nada. */
+  noindex?: boolean;
+  description?: string;
+}
+const { title, noindex = false, description = 'Reservas online para tu negocio.' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root { color-scheme: light dark; --primary: #2b59c3; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 2rem 16px 4rem; }
+  a { color: var(--primary); }
+  :focus-visible { outline: 3px solid #1a73e8; outline-offset: 2px; }
+</style>

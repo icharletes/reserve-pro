@@ -1,0 +1,31 @@
+{
+  "name": "@reservepro/admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Panel administrativo de ReservePro (Vue 3 SPA).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit -p tsconfig.json && vite build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@reservepro/api-client": "workspace:^",
+    "@reservepro/contracts": "workspace:^",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.45",
+    "vue-router": "^5.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "22",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vue/test-utils": "^2.6.0",
+    "jsdom": "^31.0.1",
+    "typescript": "5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1",
+    "vue-tsc": "^3.3.14"
+  }
+}

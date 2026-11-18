@@ -1,0 +1,20 @@
+---
+import BookingPlaceholder from '../components/BookingPlaceholder.vue';
+import Base from '../layouts/Base.astro';
+import { parsePublicSlug } from '../lib/slug';
+
+// Un slug inválido o reservado nunca llega a consultar a la API: responde 404 directamente.
+const slug = parsePublicSlug(Astro.params.slug);
+if (!slug) {
+  return new Response(null, { status: 404 });
+}
+
+// Fase 4: aquí se resolverá el negocio con GET /public/:slug (nombre, servicios, horarios, zona horaria).
+// Mientras tanto se muestra un marcador de posición SIN indexar (no confirma que el negocio exista).
+const displayName = slug.replace(/-/g, ' ');
+---
+
+<Base title={`${displayName} — Reservas`} noindex>
+  <h1>{displayName}</h1>
+  <BookingPlaceholder name={displayName} client:visible />
+</Base>

@@ -23,6 +23,9 @@ const schema = z
     TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
     /** Publica /api/v1/openapi.json. Por defecto solo fuera de producción. */
     OPENAPI_ENABLED: z.enum(['true', 'false']).optional().transform((v) => (v === undefined ? undefined : v === 'true')),
+    /** Prefijo de las colas BullMQ en Redis: aísla entornos y pruebas que comparten el mismo Redis. */
+    QUEUE_PREFIX: z.string().regex(/^[A-Za-z0-9:_-]+$/).optional(),
+    WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
     SMTP_HOST: z.string().default('localhost'),
     SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
     SMTP_USER: z.string().optional(),

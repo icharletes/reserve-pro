@@ -1,0 +1,26 @@
+{
+  "name": "@reservepro/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Portal público de reservas de ReservePro (Astro SSR + islas Vue).",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "typecheck": "astro sync && tsc --noEmit -p tsconfig.json",
+    "start": "node dist/server/entry.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.14",
+    "@astrojs/vue": "^7.1.6",
+    "@reservepro/contracts": "workspace:^",
+    "astro": "^7.4.13",
+    "vue": "^3.5.45"
+  },
+  "devDependencies": {
+    "@types/node": "22",
+    "typescript": "5.9.3",
+    "vitest": "^5.1.1"
+  }
+}

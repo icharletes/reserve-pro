@@ -475,3 +475,11 @@ describe('aislamiento entre empresas a través de la API', () => {
     ).toBe(400);
   });
 });
+
+describe('slugs reservados', () => {
+  it('la lista de @reservepro/contracts coincide EXACTAMENTE con la tabla reserved_slugs', async () => {
+    const { RESERVED_SLUGS } = await import('@reservepro/contracts');
+    const db = await owner.query(`SELECT slug FROM reserved_slugs ORDER BY slug`);
+    expect(db.rows.map((r) => r.slug)).toEqual([...RESERVED_SLUGS].sort());
+  });
+});
