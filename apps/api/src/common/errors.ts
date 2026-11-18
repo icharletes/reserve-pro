@@ -37,6 +37,9 @@ export const Errors = {
   notFound: (what = 'Recurso') => new AppError(404, 'NOT_FOUND', `${what} no encontrado`),
   emailTaken: () => new AppError(409, 'EMAIL_TAKEN', 'Ya existe una cuenta con ese email'),
   slugTaken: () => new AppError(409, 'SLUG_TAKEN', 'Ese identificador ya está en uso'),
+  duplicate: (field: string, message: string) =>
+    new AppError(409, 'DUPLICATE', message, [{ path: field, message }]),
+  inUse: (message: string) => new AppError(409, 'IN_USE', message),
   alreadyMember: () =>
     new AppError(409, 'ALREADY_MEMBER', 'Esa persona ya es miembro de la empresa'),
   alreadyInvited: () =>
