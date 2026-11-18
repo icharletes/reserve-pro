@@ -91,9 +91,13 @@ const weeklyRule = fc
     startMinute: start,
     endMinute: Math.min(1440, start + len),
   }));
-const dates = fc
-  .integer({ min: 0, max: 360 })
-  .map((offset) => eachDate('2027-01-01', '2027-12-31')[offset]!);
+// Las 365 fechas de 2027 se calculan UNA vez (recalcularlas en cada caso aleatorio es puro desperdicio).
+const ALL_DATES = eachDate('2027-01-01', '2027-12-31');
+/** La fecha `n` días después de `from`, sin pasar del fin de 2027. */
+const shift = (from: string, n: number): string =>
+  ALL_DATES[Math.min(ALL_DATES.indexOf(from) + n, ALL_DATES.length - 1)]!;
+
+const dates = fc.integer({ min: 0, max: 360 }).map((offset) => ALL_DATES[offset]!);
 
 const scheduleInput = fc.record({
   timezone: fc.constantFrom(...ZONES),
@@ -120,9 +124,7 @@ describe('resolveWorkingRanges (propiedades, con zonas y cambios de hora)', () =
   it('devuelve rangos válidos, ordenados y sin solapes', () => {
     fc.assert(
       fc.property(scheduleInput, dates, fc.integer({ min: 0, max: 14 }), (p, from, span) => {
-        const to = eachDate(from, '2027-12-31')[
-          Math.min(span, eachDate(from, '2027-12-31').length - 1)
-        ]!;
+        const to = shift(from, span);
         const ranges = resolveWorkingRanges(build(p), from, to);
         ranges.forEach((r, i) => {
           expect(r.end.getTime()).toBeGreaterThan(r.start.getTime());
@@ -136,9 +138,7 @@ describe('resolveWorkingRanges (propiedades, con zonas y cambios de hora)', () =
   it('el tiempo total nunca supera el máximo posible de los días pedidos (25 h por día)', () => {
     fc.assert(
       fc.property(scheduleInput, dates, (p, from) => {
-        const to = eachDate(from, '2027-12-31')[
-          Math.min(6, eachDate(from, '2027-12-31').length - 1)
-        ]!;
+        const to = shift(from, 6);
         const days = eachDate(from, to).length;
         const total = resolveWorkingRanges(build(p), from, to).reduce(
           (s, r) => s + (r.end.getTime() - r.start.getTime()),
@@ -155,9 +155,7 @@ describe('resolveWorkingRanges (propiedades, con zonas y cambios de hora)', () =
       fc.property(scheduleInput, dates, (p, from) => {
         const withRes = build({ ...p, hasResource: true });
         const locOnly = build({ ...p, hasResource: false });
-        const to = eachDate(from, '2027-12-31')[
-          Math.min(5, eachDate(from, '2027-12-31').length - 1)
-        ]!;
+        const to = shift(from, 5);
         const res = resolveWorkingRanges(withRes, from, to);
         const loc = resolveWorkingRanges(locOnly, from, to);
         for (const r of res) {

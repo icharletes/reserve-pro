@@ -1,24 +1,53 @@
 import {
   type AcceptInvitationRequest,
   type AuthResponse,
+  type CalendarQuery,
   type ChangePasswordRequest,
+  type CreateBlocksRequest,
+  type CreateCategoryRequest,
   type CreateInvitationRequest,
+  type CreateLocationRequest,
+  type CreateResourceRequest,
+  type CreateServiceRequest,
   type ForgotPasswordRequest,
   type LoginRequest,
+  type PutHolidayRequest,
+  type PutOverrideRequest,
   type RegisterRequest,
   type ResetPasswordRequest,
+  type ResourceListQuery,
+  type ServiceListQuery,
+  type SetBusinessHoursRequest,
+  type SetResourceScheduleRequest,
+  type SetServiceLocationsRequest,
+  type SetServiceResourcesRequest,
+  type UpdateBlockRequest,
+  type UpdateCategoryRequest,
+  type UpdateLocationRequest,
   type UpdateMemberRequest,
+  type UpdateResourceRequest,
+  type UpdateServiceRequest,
   type UpdateTenantRequest,
   acceptInvitationResponse,
   auditLogView,
   authResponse,
+  blockView,
+  businessHoursView,
+  calendarResponse,
+  categoryView,
   createInvitationResponse,
+  holidayView,
   invitationPreview,
   invitationView,
+  locationView,
   meResponse,
   memberView,
+  overrideView,
   pageOf,
+  resourceScheduleView,
+  resourceView,
   roleView,
+  serviceView,
   tenantView,
 } from '@reservepro/contracts';
 import { z } from 'zod';
@@ -33,6 +62,17 @@ export interface ApiClientOptions {
   /** Valida cada respuesta con el esquema del contrato (detecta divergencias API/cliente). Por defecto true. */
   validateResponses?: boolean;
 }
+
+/** Parámetros comunes de los listados paginados del catálogo. */
+export type ListQuery = {
+  cursor?: string;
+  limit?: number;
+  q?: string;
+  isActive?: boolean;
+};
+
+/** Codifica un id o fecha para usarlo como segmento de ruta (nunca se concatena crudo). */
+const seg = (v: string): string => encodeURIComponent(v);
 
 interface RequestOptions<T> {
   body?: unknown;
@@ -276,4 +316,115 @@ export class ApiClient {
     } = {},
   ) =>
     this.request('GET', '/tenants/current/audit-logs', { query: q, schema: pageOf(auditLogView) });
+
+  // ---------------------------------------------------------------------------------------------
+  // Catálogo: sucursales, categorías, servicios y recursos
+  // ---------------------------------------------------------------------------------------------
+  listLocations = (q: ListQuery = {}) =>
+    this.request('GET', '/locations', { query: q, schema: pageOf(locationView) });
+  getLocation = (id: string) =>
+    this.request('GET', `/locations/${seg(id)}`, { schema: locationView });
+  createLocation = (body: CreateLocationRequest) =>
+    this.request('POST', '/locations', { body, schema: locationView });
+  updateLocation = (id: string, body: UpdateLocationRequest) =>
+    this.request('PATCH', `/locations/${seg(id)}`, { body, schema: locationView });
+  deleteLocation = (id: string) => this.request<void>('DELETE', `/locations/${seg(id)}`);
+
+  listCategories = (q: ListQuery = {}) =>
+    this.request('GET', '/service-categories', { query: q, schema: pageOf(categoryView) });
+  createCategory = (body: CreateCategoryRequest) =>
+    this.request('POST', '/service-categories', { body, schema: categoryView });
+  updateCategory = (id: string, body: UpdateCategoryRequest) =>
+    this.request('PATCH', `/service-categories/${seg(id)}`, { body, schema: categoryView });
+  deleteCategory = (id: string) => this.request<void>('DELETE', `/service-categories/${seg(id)}`);
+
+  listServices = (q: ServiceListQuery | ListQuery = {}) =>
+    this.request('GET', '/services', { query: q, schema: pageOf(serviceView) });
+  getService = (id: string) => this.request('GET', `/services/${seg(id)}`, { schema: serviceView });
+  createService = (body: CreateServiceRequest) =>
+    this.request('POST', '/services', { body, schema: serviceView });
+  updateService = (id: string, body: UpdateServiceRequest) =>
+    this.request('PATCH', `/services/${seg(id)}`, { body, schema: serviceView });
+  deleteService = (id: string) => this.request<void>('DELETE', `/services/${seg(id)}`);
+  setServiceLocations = (id: string, body: SetServiceLocationsRequest) =>
+    this.request('PUT', `/services/${seg(id)}/locations`, { body, schema: serviceView });
+  setServiceResources = (id: string, body: SetServiceResourcesRequest) =>
+    this.request('PUT', `/services/${seg(id)}/resources`, { body, schema: serviceView });
+
+  listResources = (q: ResourceListQuery | ListQuery = {}) =>
+    this.request('GET', '/resources', { query: q, schema: pageOf(resourceView) });
+  getResource = (id: string) =>
+    this.request('GET', `/resources/${seg(id)}`, { schema: resourceView });
+  createResource = (body: CreateResourceRequest) =>
+    this.request('POST', '/resources', { body, schema: resourceView });
+  updateResource = (id: string, body: UpdateResourceRequest) =>
+    this.request('PATCH', `/resources/${seg(id)}`, { body, schema: resourceView });
+  deleteResource = (id: string) => this.request<void>('DELETE', `/resources/${seg(id)}`);
+
+  // ---------------------------------------------------------------------------------------------
+  // Agenda: horarios, excepciones, feriados, bloqueos y calendario
+  // ---------------------------------------------------------------------------------------------
+  getBusinessHours = (locationId: string) =>
+    this.request('GET', `/locations/${seg(locationId)}/business-hours`, {
+      schema: businessHoursView,
+    });
+  setBusinessHours = (locationId: string, body: SetBusinessHoursRequest) =>
+    this.request('PUT', `/locations/${seg(locationId)}/business-hours`, {
+      body,
+      schema: businessHoursView,
+    });
+  getResourceSchedule = (resourceId: string) =>
+    this.request('GET', `/resources/${seg(resourceId)}/schedule`, { schema: resourceScheduleView });
+  setResourceSchedule = (resourceId: string, body: SetResourceScheduleRequest) =>
+    this.request('PUT', `/resources/${seg(resourceId)}/schedule`, {
+      body,
+      schema: resourceScheduleView,
+    });
+
+  listOverrides = (
+    scope: 'locations' | 'resources',
+    id: string,
+    range: { from: string; to: string },
+  ) =>
+    this.request('GET', `/${scope}/${seg(id)}/overrides`, {
+      query: range,
+      schema: z.array(overrideView),
+    });
+  putOverride = (
+    scope: 'locations' | 'resources',
+    id: string,
+    date: string,
+    body: PutOverrideRequest,
+  ) =>
+    this.request('PUT', `/${scope}/${seg(id)}/overrides/${seg(date)}`, {
+      body,
+      schema: overrideView,
+    });
+  deleteOverride = (scope: 'locations' | 'resources', id: string, date: string) =>
+    this.request<void>('DELETE', `/${scope}/${seg(id)}/overrides/${seg(date)}`);
+
+  listHolidays = (year: number) =>
+    this.request('GET', '/holidays', { query: { year }, schema: z.array(holidayView) });
+  putHoliday = (date: string, body: PutHolidayRequest) =>
+    this.request('PUT', `/holidays/${seg(date)}`, { body, schema: holidayView });
+  deleteHoliday = (date: string) => this.request<void>('DELETE', `/holidays/${seg(date)}`);
+
+  listBlocks = (
+    q: {
+      cursor?: string;
+      limit?: number;
+      resourceId?: string;
+      locationId?: string;
+      from?: string;
+      to?: string;
+    } = {},
+  ) => this.request('GET', '/blocks', { query: q, schema: pageOf(blockView) });
+  createBlocks = (body: CreateBlocksRequest) =>
+    this.request('POST', '/blocks', { body, schema: z.array(blockView) });
+  updateBlock = (id: string, body: UpdateBlockRequest) =>
+    this.request('PATCH', `/blocks/${seg(id)}`, { body, schema: blockView });
+  deleteBlock = (id: string) => this.request<void>('DELETE', `/blocks/${seg(id)}`);
+
+  getCalendar = (q: CalendarQuery) =>
+    this.request('GET', '/calendar', { query: q, schema: calendarResponse });
 }

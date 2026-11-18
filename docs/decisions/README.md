@@ -17,3 +17,4 @@ Una decisión **no se borra**: si cambia, se crea un ADR nuevo que la reemplaza 
 | [010](010-invitaciones-y-miembros.md) | Invitaciones, miembros y anti-escalada de privilegios | Aceptado |
 | [011](011-rate-limiting-verificacion-contrasenas.md) | Rate limiting, verificación de email y gestión de contraseñas | Aceptado |
 | [012](012-worker-frontends-calidad-ci.md) | Worker, cliente de API, frontends, calidad (lint/formato) y CI | Aceptado |
+| [013](013-catalogo-y-agenda.md) | Catálogo y agenda (Fase 2): horarios en minutos, DST, EXCLUDE, reglas de resolución | Aceptado |
