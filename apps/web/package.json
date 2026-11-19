@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "typecheck": "astro sync && tsc --noEmit -p tsconfig.json",
+    "typecheck": "astro sync && tsc --noEmit -p tsconfig.json && vue-tsc --noEmit -p tsconfig.vue-check.json",
     "start": "node dist/server/entry.mjs",
     "test": "vitest run"
   },
@@ -21,6 +21,7 @@
   "devDependencies": {
     "@types/node": "22",
     "typescript": "5.9.3",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.1",
+    "vue-tsc": "^3.3.14"
   }
 }

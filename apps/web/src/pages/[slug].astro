@@ -1,20 +1,41 @@
 ---
-import BookingPlaceholder from '../components/BookingPlaceholder.vue';
+import BookingFlow from '../components/BookingFlow.vue';
 import Base from '../layouts/Base.astro';
+import { formatAddress } from '../lib/format';
+import { loadServices, loadTenant } from '../lib/server';
 import { parsePublicSlug } from '../lib/slug';
 
-// Un slug inválido o reservado nunca llega a consultar a la API: responde 404 directamente.
+// Un slug inválido o reservado nunca llega a consultar a la API.
 const slug = parsePublicSlug(Astro.params.slug);
-if (!slug) {
-  return new Response(null, { status: 404 });
+const tenant = slug ? await loadTenant(slug, Astro.clientAddress) : null;
+if (!tenant) {
+  // Mismo 404 para "no existe", "inactivo" o "sin reservas en línea": no se revela cuál.
+  return Astro.rewrite('/404');
 }
-
-// Fase 4: aquí se resolverá el negocio con GET /public/:slug (nombre, servicios, horarios, zona horaria).
-// Mientras tanto se muestra un marcador de posición SIN indexar (no confirma que el negocio exista).
-const displayName = slug.replace(/-/g, ' ');
+const first = tenant.locations[0];
+const initialServices =
+  tenant.locations.length === 1 && first
+    ? await loadServices(tenant.slug, first.id, Astro.clientAddress)
+    : null;
+const where = tenant.locations.length === 1 && first ? formatAddress(first.address) : '';
 ---
 
-<Base title={`${displayName} — Reservas`} noindex>
-  <h1>{displayName}</h1>
-  <BookingPlaceholder name={displayName} client:visible />
+<Base
+  title={`${tenant.name} — Reserva online`}
+  description={`Reserva tu hora en ${tenant.name}${where ? `, ${where}` : ''}.`}
+>
+  <header class="biz">
+    <h1>{tenant.name}</h1>
+    {where && <p class="muted">{where}</p>}
+  </header>
+  {
+    tenant.locations.length === 0 ? (
+      <p>Por ahora este negocio no tiene reservas en línea disponibles.</p>
+    ) : (
+      <BookingFlow tenant={tenant} initialServices={initialServices} client:load />
+    )
+  }
+  <footer class="muted small">
+    {`Puedes cancelar hasta ${tenant.policies.cancelWindowHours} h antes y cambiar el horario hasta ${tenant.policies.rescheduleWindowHours} h antes, desde el enlace que recibes al reservar.`}
+  </footer>
 </Base>

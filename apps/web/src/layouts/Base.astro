@@ -25,9 +25,68 @@ const { title, noindex = false, description = 'Reservas online para tu negocio.'
 </html>
 
 <style is:global>
-  :root { color-scheme: light dark; --primary: #2b59c3; }
-  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-  main { max-width: 720px; margin: 0 auto; padding: 2rem 16px 4rem; }
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f8fa; --surface: #fff; --text: #1d2330; --muted: #5b6475; --border: #d9dde5;
+    --primary: #2b59c3; --primary-text: #fff; --danger: #b3261e; --ok: #1b7a3d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c; --surface: #1d222b; --text: #e8ebf1; --muted: #9aa3b5; --border: #2f3744;
+      --primary: #6b9bff; --primary-text: #0b1220; --danger: #f2877f; --ok: #6cd08f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 1.5rem 16px 4rem; }
   a { color: var(--primary); }
+  h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.2rem; }
+  h2:focus { outline: none; }
   :focus-visible { outline: 3px solid #1a73e8; outline-offset: 2px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.875rem; }
+  .error { color: var(--danger); }
+  .ok { color: var(--ok); font-weight: 600; }
+  .biz { margin-bottom: 1rem; }
+  footer { margin-top: 2rem; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 0.6rem 1rem; }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  button.primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); font-weight: 600; width: 100%; padding: 0.8rem; }
+  button.danger { color: var(--danger); border-color: var(--danger); }
+  button.link { border: 0; background: none; padding: 0 0.25rem; color: var(--primary); text-decoration: underline; }
+  label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 500; }
+  input, textarea { display: block; width: 100%; margin-top: 0.25rem; padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  input[aria-invalid='true'] { border-color: var(--danger); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.75rem; }
+  @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+  .cards { display: grid; gap: 0.6rem; }
+  .card { display: grid; gap: 0.2rem; text-align: left; padding: 0.9rem 1rem; }
+  .card:hover { border-color: var(--primary); }
+  .card .row { display: flex; justify-content: space-between; gap: 1rem; }
+  .card .desc { font-size: 0.9rem; }
+  .tag { justify-self: start; font-size: 0.8rem; padding: 0.05rem 0.5rem; border-radius: 999px; border: 1px solid var(--border); }
+  .summary { list-style: none; padding: 0.75rem 1rem; margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .summary li { padding: 0.15rem 0; }
+  .days { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.5rem; scroll-snap-type: x mandatory; }
+  .day { flex: 0 0 auto; scroll-snap-align: start; padding: 0.5rem 0.75rem; text-transform: capitalize; }
+  .day.on, .slot.on { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+  .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr)); gap: 0.45rem; margin: 0.75rem 0; }
+  .slot { font-variant-numeric: tabular-nums; padding: 0.55rem 0; }
+  .banner { background: var(--surface); border: 2px solid var(--ok); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; }
+  .banner p { margin: 0.4rem 0; }
+  .copy { display: flex; gap: 0.5rem; }
+  .copy input { margin: 0; }
+  .status { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; border: 1px solid currentColor; font-size: 0.875rem; }
+  .status.confirmed { color: var(--primary); }
+  .status.pending { color: #9a6700; }
+  .status.cancelled, .status.no_show { color: var(--muted); }
+  .details { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
+  .details dt { color: var(--muted); }
+  .details dd { margin: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+  .actions button.primary { width: auto; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+  .panel h2 { margin-top: 0; }
 </style>

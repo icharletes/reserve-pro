@@ -8,3 +8,4 @@ export * from './catalog.js';
 export * from './schedules.js';
 export * from './reservations.js';
 export * from './public.js';
+export * from './phone.js';

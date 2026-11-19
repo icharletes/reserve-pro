@@ -77,6 +77,12 @@ jobs:
       - name: Pruebas (base de datos y Redis reales)
         run: pnpm test
 
+      # Extremo a extremo en navegador real: portal compilado + API + PostgreSQL (base propia reservepro_e2e_test).
+      - name: Navegador para E2E (Chromium de Playwright)
+        run: pnpm --filter @reservepro/e2e exec playwright install --with-deps chromium
+      - name: E2E (Playwright, escritorio y móvil)
+        run: pnpm test:e2e
+
       # El esquema de Prisma se genera desde la base de datos (db pull). Si alguien añadió una migración y no
       # versionó el schema regenerado, el cliente tipado quedaría desfasado de la base real.
       - name: El schema.prisma coincide con las migraciones

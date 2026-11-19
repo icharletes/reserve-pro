@@ -20,3 +20,4 @@ Una decisión **no se borra**: si cambia, se crea un ADR nuevo que la reemplaza 
 | [013](013-catalogo-y-agenda.md) | Catálogo y agenda (Fase 2): horarios en minutos, DST, EXCLUDE, reglas de resolución | Aceptado |
 | [014](014-motor-de-reservas.md) | Motor de reservas (Fase 3A): bloqueo + re-validación + EXCLUDE, idempotencia, versión optimista | Aceptado |
 | [015](015-portal-publico-backend.md) | Portal público, backend (Fase 4A): rutas, enlace de gestión con token, políticas, retenciones, antiabuso | Aceptado |
+| [016](016-portal-publico-frontend.md) | Portal público, frontend (Fase 4B): páginas, token en el fragmento, E2E con Playwright | Aceptado |
