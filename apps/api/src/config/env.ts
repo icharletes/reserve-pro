@@ -43,6 +43,8 @@ const schema = z
     SMTP_PASS: z.string().optional(),
     MAIL_FROM: z.string().default('ReservePro <no-reply@reservepro.local>'),
     ADMIN_APP_URL: z.url().default('http://localhost:5173'),
+    /** URL base del portal público (enlaces de gestión de reservas en los emails). */
+    PORTAL_URL: z.url().default('http://localhost:4321'),
     CORS_ORIGINS: z
       .string()
       .default('')

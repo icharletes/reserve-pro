@@ -1,4 +1,6 @@
+import { isIP } from 'node:net';
 import { Injectable } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 import type {
   CreatePublicReservationRequest,
   CreatePublicReservationResponse,
@@ -14,7 +16,8 @@ import type {
 import type { Tx } from '@reservepro/database';
 import { Errors } from '../../common/errors.js';
 import { uuidv7 } from '../../common/ids.js';
-import { generateOneTimeToken, hashOneTimeToken } from '../../common/tokens.js';
+import { hashOneTimeToken } from '../../common/tokens.js';
+import { type Scope, allScopes, issueAccessToken } from './access-tokens.js';
 import { TenantDb } from '../../platform/database/database.module.js';
 import type { Actor } from '../reservations/actor.js';
 import { AvailabilityService } from '../reservations/availability.js';
@@ -26,7 +29,8 @@ import {
 } from '../reservations/reservations.service.js';
 
 const HOUR = 3_600_000;
-type Scope = 'view' | 'cancel' | 'reschedule';
+/** Versión del texto de privacidad que ve quien reserva (apps/web BookingFlow). Cambiarla si cambia el texto. */
+export const CONSENT_TEXT_VERSION = 'portal-2026-11';
 
 const customerActor = (tenantId: string, reservationId?: string): Actor => ({
   tenantId,
@@ -90,7 +94,40 @@ export class PublicService {
     private readonly tdb: TenantDb,
     private readonly reservations: ReservationsService,
     private readonly availabilityService: AvailabilityService,
+    private readonly cls: ClsService,
   ) {}
+
+  /**
+   * Evidencia del consentimiento para mensajes TRANSACCIONALES de esta reserva (confirmación, cambios,
+   * recordatorio) por los canales que la persona dio. Historial append-only: versión del texto mostrado e IP.
+   * Marketing nunca se asume (requeriría una casilla explícita, fuera del MVP).
+   */
+  private async recordConsent(
+    tx: Tx,
+    tenantId: string,
+    reservationId: string,
+    dto: CreatePublicReservationRequest,
+  ): Promise<void> {
+    const r = await tx.reservations.findFirstOrThrow({
+      where: { id: reservationId },
+      select: { customer_id: true },
+    });
+    const ip = this.cls.get<string | undefined>('ip');
+    const channels = ['whatsapp', ...(dto.customer.email ? ['email'] : [])];
+    await tx.notification_consents.createMany({
+      data: channels.map((channel) => ({
+        id: uuidv7(),
+        tenant_id: tenantId,
+        customer_id: r.customer_id,
+        channel,
+        purpose: 'transactional',
+        status: 'granted',
+        source: 'public_web',
+        evidence_version: CONSENT_TEXT_VERSION,
+        evidence_ip: ip && isIP(ip) ? ip : null,
+      })),
+    });
+  }
 
   // --- empresa ------------------------------------------------------------------------------------------------
 
@@ -216,8 +253,9 @@ export class PublicService {
         maxActivePerCustomer: settings.max_active_public_per_customer,
         // En la MISMA transacción: el enlace de gestión. Al repetir la petición (replay) se emite uno NUEVO: el
         // anterior no se puede reconstruir porque en la BD solo está su hash.
-        after: async (tx, reservationId) => {
-          const token = await this.issueToken(tx, tenantId, reservationId, settings);
+        after: async (tx, reservationId, replayed) => {
+          if (!replayed) await this.recordConsent(tx, tenantId, reservationId, dto);
+          const token = await issueAccessToken(tx, tenantId, reservationId, settings);
           return { token, view: await this.view(tx, reservationId, settings, allScopes(settings)) };
         },
       },
@@ -226,30 +264,6 @@ export class PublicService {
       body: { reservation: result.extra.view, manageToken: result.extra.token },
       replayed: result.replayed,
     };
-  }
-
-  private async issueToken(
-    tx: Tx,
-    tenantId: string,
-    reservationId: string,
-    settings: BookingSettings,
-  ): Promise<string> {
-    const r = await tx.reservations.findFirstOrThrow({
-      where: { id: reservationId },
-      select: { end_at: true },
-    });
-    const { token, hash } = generateOneTimeToken();
-    await tx.reservation_access_tokens.create({
-      data: {
-        id: uuidv7(),
-        tenant_id: tenantId,
-        reservation_id: reservationId,
-        token_hash: hash,
-        scopes: allScopes(settings),
-        expires_at: r.end_at, // el enlace deja de servir cuando la reserva termina
-      },
-    });
-    return token;
   }
 
   private async view(
@@ -411,12 +425,3 @@ export class PublicService {
     return this.lookup(dto.token);
   }
 }
-
-const allScopes = (s: BookingSettings): Scope[] => {
-  const a = actions(s);
-  return [
-    'view',
-    ...(a.cancel ? (['cancel'] as const) : []),
-    ...(a.reschedule ? (['reschedule'] as const) : []),
-  ];
-};

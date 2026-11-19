@@ -35,14 +35,15 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Toda consulta de tenant va por `withTenant(db, {tenantId}, tx => …)`; nunca por el cliente suelto.
 
 ## Estado
-**Fases 1–4 completas** (4B en rama `fase-4b-portal-astro`). Siguiente: **Fase 5, comunicaciones por email** (publisher del outbox, plantillas, email con el enlace de gestión, recordatorios). Pendiente cercano: pantalla de configuración de políticas en el panel.
+**Fases 1–4 y 5A completas** (5A en rama `fase-5-emails`, apilada sobre 4B). Siguiente: **Fase 5B, panel**: centro de comunicaciones y pantalla de configuración (políticas, recordatorio, emails).
 - ✔ Fase 1: monorepo, auth, RBAC, invitaciones, rate limiting, OpenAPI, worker, panel y portal, lint y CI.
 - ✔ Fase 2 (ADR-013): catálogo (sucursales, categorías, servicios, recursos), agenda (horarios semanales, excepciones, feriados, bloqueos) y calendario de solo lectura; resolución de horarios con DST en `booking-domain`; pantallas del panel.
 - ✔ Fase 3A (ADR-014): clientes, disponibilidad, reservas (bloqueo + re-validación + EXCLUDE), idempotencia, versión optimista, eventos/outbox, calendario con reservas, agenda vs reservas.
 - ✔ Fase 3B: panel de reservas (lista, nueva, detalle con acciones/reprogramar/historial), clientes, reservas en calendario e inicio.
 - ✔ Fase 4A (ADR-015): API pública por slug, enlace de gestión (token en el cuerpo), políticas de autogestión, retenciones con barrido del worker, antiabuso por teléfono; RLS forzado verificado en TODAS las tablas.
 - ✔ Fase 4B (ADR-016): portal `/{slug}` (SSR + isla de reserva) y `/mi-reserva#token=…`; E2E Playwright escritorio+móvil.
-- 655 pruebas + 10 E2E (`pnpm test:e2e`). Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
+- ✔ Fase 5A (ADR-017): outbox → BullMQ → email deduplicado al cliente (con enlace de gestión nuevo), recordatorio 24 h, consentimiento transaccional versionado.
+- 670 pruebas + 10 E2E (`pnpm test:e2e`). Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
 - Pendientes: CAPTCHA (Turnstile) en el portal; `Promise.all` dentro de transacciones en código antiguo (`blocks.ts`) → secuencial (pg@9 lo prohibirá).
 
 ## Reglas de código de la API
@@ -61,6 +62,7 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Esquemas de EDICIÓN (`update*Request`): derivarlos de un esquema base SIN `default()`, nunca de el de creación con `.partial()` (reiniciaba campos en silencio, ADR-013).
 - Las tablas PARTICIONADAS no heredan RLS al consultar la partición: `REVOKE ALL` a `rp_app` + `rp_enable_tenant_rls` en cada partición (migración 0008).
 - El motor recibe un `Actor` (empresa, canal, tipo); nunca lee la sesión dentro. Portal y worker usan `*As(actor, …)`.
+- Emails al cliente: SOLO desde el worker (`NotificationsService`), nunca desde la request. Dedupe por `dedupe_key`; `rp_system` solo para descubrir trabajo, el envío con RLS. Pruebas del worker real: buzón falso.
 - Reservas: toda escritura por `ReservationsService` (lock de recursos → `checkFit` → insert; EXCLUDE de respaldo). SQLSTATE con `pgCode()` (`common/pg-errors.ts`): Prisma envuelve los errores de PG en sus propios códigos P20xx.
 - Dentro de una transacción, consultas **secuenciales** (no `Promise.all`: una sola conexión).
 - Horarios: minutos de pared 0–1440 y días ISO 1–7; la resolución a UTC vive solo en `booking-domain/schedule.ts`.
