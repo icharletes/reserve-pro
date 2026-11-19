@@ -5,6 +5,10 @@ import { DatabaseModule } from '../platform/database/database.module.js';
 import { LoggingModule } from '../platform/logging/logger.js';
 import { AuditModule } from '../platform/audit/audit.module.js';
 import { SystemDb } from './maintenance/system-db.js';
+import { EmailModule } from '../platform/email/email.module.js';
+import { NotificationsService } from '../modules/notifications/notifications.service.js';
+import { DispatchService } from './notifications/dispatch.service.js';
+import { NotificationsProcessor } from './notifications/notifications.processor.js';
 import { MaintenanceProcessor } from './maintenance/maintenance.processor.js';
 import { MaintenanceService } from './maintenance/maintenance.service.js';
 
@@ -19,8 +23,16 @@ import { MaintenanceService } from './maintenance/maintenance.service.js';
     LoggingModule,
     DatabaseModule,
     AuditModule,
+    EmailModule,
   ],
-  providers: [SystemDb, MaintenanceService, MaintenanceProcessor],
+  providers: [
+    SystemDb,
+    MaintenanceService,
+    MaintenanceProcessor,
+    NotificationsService,
+    DispatchService,
+    NotificationsProcessor,
+  ],
   exports: [MaintenanceProcessor, MaintenanceService],
 })
 export class WorkerModule {}

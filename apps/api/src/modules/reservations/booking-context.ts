@@ -237,6 +237,8 @@ export const DEFAULT_SETTINGS = {
   self_service_actions: { cancel: true, confirm: true, details: true, reschedule: true } as unknown,
   public_booking_enabled: true,
   max_active_public_per_customer: 3,
+  reminder_hours_before: 24 as number | null,
+  customer_emails_enabled: true,
 };
 export type BookingSettings = typeof DEFAULT_SETTINGS;
 

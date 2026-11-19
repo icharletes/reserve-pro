@@ -315,7 +315,7 @@ const stepTitle: Record<Step, string> = {
         }}
       </p>
       <label
-        >Email <span class="muted">(opcional)</span>
+        >Email <span class="muted">(opcional, para recibir la confirmación y el enlace)</span>
         <input
           v-model="form.email"
           type="email"
@@ -328,8 +328,10 @@ const stepTitle: Record<Step, string> = {
         >¿Algo que debamos saber? <span class="muted">(opcional)</span
         ><textarea v-model="form.notes" rows="2" maxlength="1000" />
       </label>
+      <!-- Texto de consentimiento VERSIONADO: si cambia, cambiar CONSENT_TEXT_VERSION (api, public.service.ts). -->
       <p class="muted small">
-        Usaremos tus datos solo para gestionar esta reserva con {{ tenant.name }}.
+        Usaremos tus datos solo para gestionar esta reserva con {{ tenant.name }}: confirmación,
+        cambios y un recordatorio por los medios que nos diste.
       </p>
       <p v-if="submitError" role="alert" class="error">{{ submitError }}</p>
       <button type="submit" class="primary" :disabled="submitting">

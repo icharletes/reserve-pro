@@ -9,7 +9,9 @@ import {
   MAINTENANCE_QUEUE,
 } from '../src/worker/maintenance/maintenance.processor.js';
 import { MaintenanceService } from '../src/worker/maintenance/maintenance.service.js';
+import { NotificationsProcessor } from '../src/worker/notifications/notifications.processor.js';
 import { WorkerModule } from '../src/worker/worker.module.js';
+import { EMAIL_PROVIDER } from '../src/platform/email/email.module.js';
 import { createTestApp, ownerPool, register } from './helpers.js';
 
 const REDIS_URL = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
@@ -30,7 +32,11 @@ async function startWorker(env: Record<string, string | undefined> = {}): Promis
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
   }
-  const m = await Test.createTestingModule({ imports: [WorkerModule] }).compile();
+  // Buzón falso: el worker real despacharía por SMTP los eventos que dejan las demás suites en la base de pruebas.
+  const m = await Test.createTestingModule({ imports: [WorkerModule] })
+    .overrideProvider(EMAIL_PROVIDER)
+    .useValue({ send: async () => undefined })
+    .compile();
   await m.init();
   return m;
 }
@@ -134,6 +140,19 @@ describe('worker real con BullMQ y Redis', () => {
     const s = schedulers.find((x) => x.key === 'purge-expired-tokens-daily');
     expect(s?.pattern).toBe('0 3 * * *');
     expect(s?.tz).toBe('UTC');
+  });
+
+  it('programa las comunicaciones: outbox cada 5 s y recordatorios cada minuto', async () => {
+    const schedulers = await moduleRef.get(NotificationsProcessor).schedulers();
+    const byKey = Object.fromEntries(schedulers.map((x) => [x.key, x]));
+    expect(byKey['publish-outbox-every-5s']?.every).toBe(5_000);
+    expect(byKey['scan-reminders-every-minute']?.pattern).toBe('* * * * *');
+  });
+
+  it('un job de notificaciones desconocido también FALLA', async () => {
+    await expect(
+      moduleRef.get(NotificationsProcessor).process({ name: 'inventado' } as never),
+    ).rejects.toThrow(/job desconocido/);
   });
 
   it('ejecuta un job encolado: la purga ocurre de verdad', async () => {

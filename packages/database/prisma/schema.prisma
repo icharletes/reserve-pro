@@ -171,6 +171,8 @@ model tenant_settings {
   updated_at                     DateTime @default(now()) @db.Timestamptz(6)
   public_booking_enabled         Boolean  @default(true)
   max_active_public_per_customer Int      @default(3)
+  reminder_hours_before          Int?     @default(24)
+  customer_emails_enabled        Boolean  @default(true)
   tenants                        tenants  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -193,6 +195,7 @@ model tenants {
   idempotency_keys   idempotency_keys[]
   invitations        invitations[]
   locations          locations[]
+  notifications      notifications[]
   outbox_events      outbox_events[]
   refresh_tokens     refresh_tokens[]
   reservations       reservations[]
@@ -446,18 +449,20 @@ model services {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model customers {
-  id             String         @id @db.Uuid
-  tenant_id      String         @db.Uuid
-  first_name     String         @db.VarChar(100)
-  last_name      String?        @db.VarChar(100)
-  phone_e164     String?        @db.VarChar(16)
-  email          String?        @db.Citext
-  internal_notes String?
-  anonymized_at  DateTime?      @db.Timestamptz(6)
-  created_at     DateTime       @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime       @default(now()) @db.Timestamptz(6)
-  tenants        tenants        @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  reservations   reservations[]
+  id                    String                  @id @db.Uuid
+  tenant_id             String                  @db.Uuid
+  first_name            String                  @db.VarChar(100)
+  last_name             String?                 @db.VarChar(100)
+  phone_e164            String?                 @db.VarChar(16)
+  email                 String?                 @db.Citext
+  internal_notes        String?
+  anonymized_at         DateTime?               @db.Timestamptz(6)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  tenants               tenants                 @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notification_consents notification_consents[]
+  notifications         notifications[]
+  reservations          reservations[]
 
   @@unique([tenant_id, id])
   @@unique([tenant_id, phone_e164], map: "uq_customers_phone", where: raw("((phone_e164 IS NOT NULL) AND (anonymized_at IS NULL))"))
@@ -589,6 +594,7 @@ model reservations {
   created_by_membership_id  String?                     @db.Uuid
   created_at                DateTime                    @default(now()) @db.Timestamptz(6)
   updated_at                DateTime                    @default(now()) @db.Timestamptz(6)
+  notifications             notifications[]
   reservation_access_tokens reservation_access_tokens[]
   reservation_events        reservation_events[]
   reservation_items         reservation_items[]
@@ -623,4 +629,52 @@ model reservation_access_tokens {
 
   @@unique([tenant_id, id])
   @@index([tenant_id, reservation_id], map: "ix_rat_reservation")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model notification_consents {
+  id               String    @id @db.Uuid
+  tenant_id        String    @db.Uuid
+  customer_id      String    @db.Uuid
+  channel          String
+  purpose          String
+  status           String
+  source           String
+  evidence_version String?   @db.VarChar(40)
+  evidence_ip      String?   @db.Inet
+  occurred_at      DateTime  @default(now()) @db.Timestamptz(6)
+  customers        customers @relation(fields: [tenant_id, customer_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id, customer_id, channel, purpose, occurred_at(sort: Desc)], map: "ix_consents_current")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model notifications {
+  id                  String        @id @db.Uuid
+  tenant_id           String        @db.Uuid
+  reservation_id      String?       @db.Uuid
+  customer_id         String?       @db.Uuid
+  channel             String
+  type                String
+  recipient           String        @db.VarChar(254)
+  subject             String?       @db.VarChar(300)
+  dedupe_key          String
+  reference_at        DateTime?     @db.Timestamptz(6)
+  status              String        @default("queued")
+  attempts            Int           @default(0)
+  last_error          String?       @db.VarChar(500)
+  provider_message_id String?
+  created_at          DateTime      @default(now()) @db.Timestamptz(6)
+  sent_at             DateTime?     @db.Timestamptz(6)
+  updated_at          DateTime      @default(now()) @db.Timestamptz(6)
+  customers           customers?    @relation(fields: [tenant_id, customer_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  tenants             tenants       @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reservations        reservations? @relation(fields: [tenant_id, reservation_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, dedupe_key])
+  @@unique([tenant_id, id])
+  @@index([tenant_id, reservation_id, created_at], map: "ix_notifications_reservation")
+  @@index([tenant_id, status, created_at(sort: Desc)], map: "ix_notifications_tenant_status")
 }
