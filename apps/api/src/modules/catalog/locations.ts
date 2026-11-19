@@ -25,6 +25,7 @@ import {
 } from '@reservepro/contracts';
 import type { Prisma } from '@reservepro/database';
 import { Errors } from '../../common/errors.js';
+import { lockResources, upcomingReservations } from '../reservations/booking-context.js';
 import { uuidv7 } from '../../common/ids.js';
 import { type Page, decodeCursor, toPage } from '../../common/pagination.js';
 import { ZodPipe } from '../../common/zod.pipe.js';
@@ -126,6 +127,22 @@ export class LocationsService {
           const tenant = await tx.tenants.findFirstOrThrow({ select: { timezone: true } });
           const before = await tx.locations.findFirst({ where: { id } });
           if (!before) throw Errors.notFound('Sucursal');
+          if (dto.isActive === false && before.is_active) {
+            // Bajo el lock de sus recursos: nadie puede reservar en la sucursal mientras se desactiva.
+            const own = await tx.resources.findMany({
+              where: { location_id: id },
+              select: { id: true },
+            });
+            await lockResources(
+              tx,
+              own.map((r) => r.id),
+            );
+            if ((await upcomingReservations(tx, { locationId: id })) > 0) {
+              throw Errors.hasReservations(
+                'Esta sucursal tiene reservas próximas. Reprográmalas o cancélalas antes de desactivarla.',
+              );
+            }
+          }
           const after = await tx.locations.update({
             where: { id },
             data: {

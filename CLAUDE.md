@@ -34,11 +34,12 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Toda consulta de tenant va por `withTenant(db, {tenantId}, tx => …)`; nunca por el cliente suelto.
 
 ## Estado
-**Fases 1 y 2 completas** (rama `fase-2-catalogo-agenda`, ver PR). Siguiente: **Fase 3, motor de reservas** (la más crítica; ver ARCHITECTURE.md §6).
+**Fases 1, 2 y 3A completas** (3A en rama `fase-3a-motor-reservas`). Siguiente: **Fase 3B, panel de reservas** (crear, ver y gestionar reservas en el admin).
 - ✔ Fase 1: monorepo, auth, RBAC, invitaciones, rate limiting, OpenAPI, worker, panel y portal, lint y CI.
 - ✔ Fase 2 (ADR-013): catálogo (sucursales, categorías, servicios, recursos), agenda (horarios semanales, excepciones, feriados, bloqueos) y calendario de solo lectura; resolución de horarios con DST en `booking-domain`; pantallas del panel.
-- 529 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
-- **Fase 3 debe recordar** (ADR-013): bloqueos vs. reservas, desactivar con reservas futuras, cambio de horario con reservas hechas, y que `DELETE` pasará a dar `IN_USE` por FK.
+- ✔ Fase 3A (ADR-014): clientes, disponibilidad, reservas (bloqueo + re-validación + EXCLUDE), idempotencia, versión optimista, eventos/outbox, calendario con reservas, agenda vs reservas.
+- 591 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
+- Pendientes: purgar `idempotency_keys` vencidas (worker, `rp_system`); `Promise.all` dentro de transacciones en código antiguo (`blocks.ts`) → secuencial (pg@9 lo prohibirá).
 
 ## Reglas de código de la API
 - Todo endpoint declara `@Public()`, `@Authenticated()` o `@RequirePermissions()`; sin eso no se ejecuta.
@@ -54,6 +55,8 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - `astro check` no funciona (dependencia beta); el portal usa `astro sync` + `tsc` y `astro build`.
 - Medir antes de optimizar; no cachear la identidad (rompería la desactivación inmediata). Ver PERFORMANCE.md.
 - Esquemas de EDICIÓN (`update*Request`): derivarlos de un esquema base SIN `default()`, nunca de el de creación con `.partial()` (reiniciaba campos en silencio, ADR-013).
+- Reservas: toda escritura por `ReservationsService` (lock de recursos → `checkFit` → insert; EXCLUDE de respaldo). SQLSTATE con `pgCode()` (`common/pg-errors.ts`): Prisma envuelve los errores de PG en sus propios códigos P20xx.
+- Dentro de una transacción, consultas **secuenciales** (no `Promise.all`: una sola conexión).
 - Horarios: minutos de pared 0–1440 y días ISO 1–7; la resolución a UTC vive solo en `booking-domain/schedule.ts`.
 - Scripts que editan archivos con `str.replace`: **verificar que el patrón coincidió** (assert). Prettier reformatea el texto y un reemplazo que no coincide falla en silencio.
 - `main` está protegida: todo cambio va por rama + pull request + CI en verde.

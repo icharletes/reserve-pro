@@ -22,9 +22,10 @@ import {
   updateBlockRequest,
   uuid,
 } from '@reservepro/contracts';
-import type { Prisma } from '@reservepro/database';
+import type { Prisma, Tx } from '@reservepro/database';
 import { z } from 'zod';
 import { Errors } from '../../common/errors.js';
+import { lockResources, overlappingReservations } from '../reservations/booking-context.js';
 import { uuidv7 } from '../../common/ids.js';
 import { type Page, decodeCursor, toPage } from '../../common/pagination.js';
 import { ZodPipe } from '../../common/zod.pipe.js';
@@ -55,10 +56,18 @@ const toView = (b: Row): BlockView => ({
 
 const MAX_MS = 366 * 86_400_000;
 
+async function assertFree(tx: Tx, resourceIds: string[], start: Date, end: Date): Promise<void> {
+  if ((await overlappingReservations(tx, resourceIds, { start, end })) > 0) {
+    throw Errors.hasReservations(
+      'Hay reservas en ese horario. Reprográmalas o cancélalas antes de bloquearlo.',
+    );
+  }
+}
+
 /**
  * Bloqueos puntuales de un recurso (ausencias, mantenimiento…).
- * FASE 3: al crear o ampliar un bloqueo hay que comprobar contra las reservas existentes del recurso (bajo el
- * mismo lock de recurso del motor de reservas, ARCHITECTURE.md §6.2). Hoy aún no existen reservas.
+ * Un bloqueo NO puede pisar reservas activas (409 HAS_RESERVATIONS): se comprueba con el MISMO lock de recurso
+ * que usa el motor de reservas (ARCHITECTURE.md §6.2), así que no se cuela una reserva entre medio.
  */
 @Injectable()
 export class BlocksService {
@@ -99,6 +108,8 @@ export class BlocksService {
         throw Errors.validation([
           { path: 'resourceIds', message: 'Uno o más recursos no existen' },
         ]);
+      await lockResources(tx, ids);
+      await assertFree(tx, ids, new Date(dto.startAt), new Date(dto.endAt));
 
       const membershipId = this.tdb.membershipId; // created_by es informativo (sin FK)
       const created = await Promise.all(
@@ -146,6 +157,8 @@ export class BlocksService {
           { path: 'endAt', message: 'El fin debe ser posterior al inicio y no superar 366 días' },
         ]);
       }
+      await lockResources(tx, [before.resource_id]);
+      await assertFree(tx, [before.resource_id], start, end);
       const after = await tx.availability_blocks.update({
         where: { id },
         data: {

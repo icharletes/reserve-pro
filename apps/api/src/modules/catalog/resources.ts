@@ -24,6 +24,7 @@ import {
 } from '@reservepro/contracts';
 import type { Prisma, Tx } from '@reservepro/database';
 import { Errors } from '../../common/errors.js';
+import { lockResources, upcomingReservations } from '../reservations/booking-context.js';
 import { uuidv7 } from '../../common/ids.js';
 import { type Page, decodeCursor, toPage } from '../../common/pagination.js';
 import { ZodPipe } from '../../common/zod.pipe.js';
@@ -159,6 +160,15 @@ export class ResourcesService {
         this.tdb.runAsPrincipal(async (tx) => {
           const before = await tx.resources.findFirst({ where: { id } });
           if (!before) throw Errors.notFound('Recurso');
+          if (dto.isActive === false && before.is_active) {
+            // Bajo el lock del recurso: nadie puede reservarlo mientras se desactiva.
+            await lockResources(tx, [id]);
+            if ((await upcomingReservations(tx, { resourceIds: [id] })) > 0) {
+              throw Errors.hasReservations(
+                'Este recurso tiene reservas próximas. Reprográmalas o cancélalas antes de desactivarlo.',
+              );
+            }
+          }
           if (dto.membershipId && before.kind !== 'staff') {
             throw Errors.validation([
               {
