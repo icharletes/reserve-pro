@@ -30,6 +30,26 @@ const badLogin = (a: INestApplication, email: string) =>
   http(a).post('/api/v1/auth/login').send({ email, password: 'incorrecta-123456' });
 
 describe('rate limiting con Redis', () => {
+  it('portal: más de 5 reservas por hora con el MISMO teléfono => 429; otro teléfono sigue pudiendo', async () => {
+    app = await createTestApp([], { rateLimit: true, env: { REDIS_URL, TRUST_PROXY: '0' } });
+    const attempt = (phoneE164: string) =>
+      http(app!)
+        .post('/api/v1/public/tenants/no-existe-negocio/reservations')
+        .set('Idempotency-Key', randomUUID())
+        .send({
+          serviceId: randomUUID(),
+          locationId: randomUUID(),
+          startAt: '2030-01-07T13:00:00.000Z',
+          customer: { firstName: 'X', phoneE164 },
+        });
+    const statuses: number[] = [];
+    for (let i = 0; i < 6; i++) statuses.push((await attempt('+56911112222')).status);
+    // el límite cuenta INTENTOS (aunque fallen): así no se puede sondear el portal sin coste
+    expect(statuses.slice(0, 5).every((s) => s !== 429)).toBe(true);
+    expect(statuses[5]).toBe(429);
+    expect((await attempt('+56933334444')).status).not.toBe(429);
+  });
+
   it('login: más de 20 intentos por minuto desde una IP => 429 con Retry-After y problem+json', async () => {
     app = await createTestApp([], { rateLimit: true, env: { REDIS_URL, TRUST_PROXY: '0' } });
     const statuses: number[] = [];

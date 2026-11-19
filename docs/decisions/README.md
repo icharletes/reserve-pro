@@ -19,3 +19,4 @@ Una decisión **no se borra**: si cambia, se crea un ADR nuevo que la reemplaza 
 | [012](012-worker-frontends-calidad-ci.md) | Worker, cliente de API, frontends, calidad (lint/formato) y CI | Aceptado |
 | [013](013-catalogo-y-agenda.md) | Catálogo y agenda (Fase 2): horarios en minutos, DST, EXCLUDE, reglas de resolución | Aceptado |
 | [014](014-motor-de-reservas.md) | Motor de reservas (Fase 3A): bloqueo + re-validación + EXCLUDE, idempotencia, versión optimista | Aceptado |
+| [015](015-portal-publico-backend.md) | Portal público, backend (Fase 4A): rutas, enlace de gestión con token, políticas, retenciones, antiabuso | Aceptado |

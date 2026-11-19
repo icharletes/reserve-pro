@@ -3,7 +3,7 @@
     "schemas": {
       "Problem": {
         "additionalProperties": false,
-        "description": "RFC 9457 application/problem+json. Códigos estables: SLOT_UNAVAILABLE, OUTSIDE_BOOKING_WINDOW, INVALID_TRANSITION, IDEMPOTENCY_CONFLICT, VERSION_CONFLICT, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, UNAUTHENTICATED, INVALID_CREDENTIALS, TOKEN_INVALID, TENANT_REQUIRED, CSRF_REJECTED, EMAIL_TAKEN, SLUG_TAKEN, TOO_MANY_ATTEMPTS, INTERNAL_ERROR, ALREADY_MEMBER, INVITATION_INVALID, LAST_OWNER, CANNOT_MODIFY_SELF, ROLE_NOT_ALLOWED, LIMIT_REACHED, ALREADY_INVITED, DUPLICATE, IN_USE, HAS_RESERVATIONS, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_IN_PROGRESS, RATE_LIMITED, EMAIL_NOT_VERIFIED, LINK_INVALID",
+        "description": "RFC 9457 application/problem+json. Códigos estables: SLOT_UNAVAILABLE, OUTSIDE_BOOKING_WINDOW, INVALID_TRANSITION, IDEMPOTENCY_CONFLICT, VERSION_CONFLICT, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, UNAUTHENTICATED, INVALID_CREDENTIALS, TOKEN_INVALID, TENANT_REQUIRED, CSRF_REJECTED, EMAIL_TAKEN, SLUG_TAKEN, TOO_MANY_ATTEMPTS, INTERNAL_ERROR, ALREADY_MEMBER, INVITATION_INVALID, LAST_OWNER, CANNOT_MODIFY_SELF, ROLE_NOT_ALLOWED, LIMIT_REACHED, ALREADY_INVITED, DUPLICATE, IN_USE, HAS_RESERVATIONS, POLICY_VIOLATION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_IN_PROGRESS, RATE_LIMITED, EMAIL_NOT_VERIFIED, LINK_INVALID",
         "properties": {
           "code": {
             "type": "string"
@@ -5986,6 +5986,1670 @@
           "Me"
         ],
         "x-authorization": "authenticated"
+      }
+    },
+    "/public/manage/availability": {
+      "post": {
+        "description": "Mismo profesional/recurso; la propia reserva no cuenta como ocupada.",
+        "operationId": "Public_manageAvailability",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "days": {
+                    "default": 1,
+                    "maximum": 7,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "from": {
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                    "type": "string"
+                  },
+                  "token": {
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token",
+                  "from"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "resources": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "resourceId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "slots": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "end": {
+                                  "type": "string"
+                                },
+                                "start": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "start",
+                                "end"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "resourceId",
+                          "name",
+                          "slots"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "stepMinutes": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "stepMinutes",
+                    "resources"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Enlace inválido, vencido o revocado (LINK_INVALID; siempre la misma respuesta)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Horarios para cambiar mi reserva",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 30,
+            "name": "public-manage-read",
+            "windowSec": 60
+          }
+        ]
+      }
+    },
+    "/public/manage/cancel": {
+      "post": {
+        "operationId": "Public_cancel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "maxLength": 300,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "token": {
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "maximum": 9007199254740991,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "token",
+                  "version"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "canCancel": {
+                      "type": "boolean"
+                    },
+                    "canReschedule": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "durationMinutes": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "endAt": {
+                      "type": "string"
+                    },
+                    "holdExpiresAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "locationAddress": {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "locationId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "locationName": {
+                      "type": "string"
+                    },
+                    "policyNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resourceName": {
+                      "type": "string"
+                    },
+                    "serviceId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "serviceName": {
+                      "type": "string"
+                    },
+                    "startAt": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "confirmed",
+                        "in_progress",
+                        "completed",
+                        "cancelled",
+                        "no_show"
+                      ],
+                      "type": "string"
+                    },
+                    "tenantName": {
+                      "type": "string"
+                    },
+                    "tenantSlug": {
+                      "type": "string"
+                    },
+                    "timeZone": {
+                      "type": "string"
+                    },
+                    "totalAmount": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "startAt",
+                    "endAt",
+                    "timeZone",
+                    "holdExpiresAt",
+                    "tenantName",
+                    "tenantSlug",
+                    "serviceId",
+                    "serviceName",
+                    "durationMinutes",
+                    "totalAmount",
+                    "currency",
+                    "locationId",
+                    "locationName",
+                    "locationAddress",
+                    "resourceName",
+                    "version",
+                    "canCancel",
+                    "canReschedule",
+                    "policyNote"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Enlace inválido, vencido o revocado (LINK_INVALID; siempre la misma respuesta)"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Fuera de plazo o no permitido por el negocio (POLICY_VIOLATION), ya cancelada (INVALID_TRANSITION) o cambió (VERSION_CONFLICT)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Cancelar mi reserva",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 10,
+            "name": "public-manage-write",
+            "windowSec": 600
+          }
+        ]
+      }
+    },
+    "/public/manage/lookup": {
+      "post": {
+        "description": "El token va en el cuerpo, nunca en la URL. Incluye qué acciones permite hoy la política del negocio.",
+        "operationId": "Public_lookup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "token": {
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "canCancel": {
+                      "type": "boolean"
+                    },
+                    "canReschedule": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "durationMinutes": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "endAt": {
+                      "type": "string"
+                    },
+                    "holdExpiresAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "locationAddress": {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "locationId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "locationName": {
+                      "type": "string"
+                    },
+                    "policyNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resourceName": {
+                      "type": "string"
+                    },
+                    "serviceId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "serviceName": {
+                      "type": "string"
+                    },
+                    "startAt": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "confirmed",
+                        "in_progress",
+                        "completed",
+                        "cancelled",
+                        "no_show"
+                      ],
+                      "type": "string"
+                    },
+                    "tenantName": {
+                      "type": "string"
+                    },
+                    "tenantSlug": {
+                      "type": "string"
+                    },
+                    "timeZone": {
+                      "type": "string"
+                    },
+                    "totalAmount": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "startAt",
+                    "endAt",
+                    "timeZone",
+                    "holdExpiresAt",
+                    "tenantName",
+                    "tenantSlug",
+                    "serviceId",
+                    "serviceName",
+                    "durationMinutes",
+                    "totalAmount",
+                    "currency",
+                    "locationId",
+                    "locationName",
+                    "locationAddress",
+                    "resourceName",
+                    "version",
+                    "canCancel",
+                    "canReschedule",
+                    "policyNote"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Enlace inválido, vencido o revocado (LINK_INVALID; siempre la misma respuesta)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Ver mi reserva (enlace de gestión)",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 30,
+            "name": "public-manage-read",
+            "windowSec": 60
+          }
+        ]
+      }
+    },
+    "/public/manage/reschedule": {
+      "post": {
+        "description": "Conserva servicio, duración, precio y profesional.",
+        "operationId": "Public_reschedule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "startAt": {
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                    "type": "string"
+                  },
+                  "token": {
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "maximum": 9007199254740991,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "token",
+                  "version",
+                  "startAt"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "canCancel": {
+                      "type": "boolean"
+                    },
+                    "canReschedule": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "durationMinutes": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "endAt": {
+                      "type": "string"
+                    },
+                    "holdExpiresAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "locationAddress": {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "locationId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "locationName": {
+                      "type": "string"
+                    },
+                    "policyNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resourceName": {
+                      "type": "string"
+                    },
+                    "serviceId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "serviceName": {
+                      "type": "string"
+                    },
+                    "startAt": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "confirmed",
+                        "in_progress",
+                        "completed",
+                        "cancelled",
+                        "no_show"
+                      ],
+                      "type": "string"
+                    },
+                    "tenantName": {
+                      "type": "string"
+                    },
+                    "tenantSlug": {
+                      "type": "string"
+                    },
+                    "timeZone": {
+                      "type": "string"
+                    },
+                    "totalAmount": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "startAt",
+                    "endAt",
+                    "timeZone",
+                    "holdExpiresAt",
+                    "tenantName",
+                    "tenantSlug",
+                    "serviceId",
+                    "serviceName",
+                    "durationMinutes",
+                    "totalAmount",
+                    "currency",
+                    "locationId",
+                    "locationName",
+                    "locationAddress",
+                    "resourceName",
+                    "version",
+                    "canCancel",
+                    "canReschedule",
+                    "policyNote"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Enlace inválido, vencido o revocado (LINK_INVALID; siempre la misma respuesta)"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Horario no disponible, fuera de plazo o máximo de cambios alcanzado, o la reserva cambió"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Fuera de la antelación permitida"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Cambiar el horario de mi reserva",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 10,
+            "name": "public-manage-write",
+            "windowSec": 600
+          }
+        ]
+      }
+    },
+    "/public/tenants/{slug}": {
+      "get": {
+        "description": "Nombre, zona horaria, moneda, sucursales con reservas en línea y políticas de cancelación.",
+        "operationId": "Public_tenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "currency": {
+                      "type": "string"
+                    },
+                    "locations": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "address": {
+                            "additionalProperties": {},
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "id": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "phone": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "timezone": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "address",
+                          "phone",
+                          "timezone"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "policies": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "cancelWindowHours": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        "maxReschedules": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        "rescheduleWindowHours": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "cancelWindowHours",
+                        "rescheduleWindowHours",
+                        "maxReschedules"
+                      ],
+                      "type": "object"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "slug",
+                    "timezone",
+                    "currency",
+                    "locations",
+                    "policies"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Datos inválidos (VALIDATION_ERROR)"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "El negocio no existe, no está activo o no tiene reservas en línea"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Datos públicos de un negocio",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 120,
+            "name": "public-read",
+            "windowSec": 60
+          }
+        ]
+      }
+    },
+    "/public/tenants/{slug}/availability": {
+      "get": {
+        "description": "Como la disponibilidad del panel, pero con la antelación mínima y máxima de los canales públicos y solo recursos reservables en línea. Máximo 7 días por consulta.",
+        "operationId": "Public_availability",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "serviceId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resourceId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "resources": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "resourceId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "slots": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "end": {
+                                  "type": "string"
+                                },
+                                "start": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "start",
+                                "end"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "resourceId",
+                          "name",
+                          "slots"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "stepMinutes": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "stepMinutes",
+                    "resources"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "El servicio no se ofrece en esa sucursal"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "El negocio no existe, no está activo o no tiene reservas en línea"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Horarios disponibles (portal)",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 60,
+            "name": "public-availability",
+            "windowSec": 60
+          }
+        ]
+      }
+    },
+    "/public/tenants/{slug}/reservations": {
+      "post": {
+        "description": "Exige `Idempotency-Key`. Devuelve la reserva y `manageToken`, el secreto del enlace de gestión: se muestra una sola vez y debe guardarse solo en el fragmento de la URL (`#token=…`). Repetir la petición con la misma clave devuelve la misma reserva con un enlace nuevo. Según la configuración del negocio, la reserva queda confirmada o pendiente (retenida hasta `holdExpiresAt`).",
+        "operationId": "Public_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "customer": {
+                    "properties": {
+                      "email": {
+                        "anyOf": [
+                          {
+                            "maxLength": 254,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "firstName": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "lastName": {
+                        "anyOf": [
+                          {
+                            "maxLength": 100,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "phoneE164": {
+                        "pattern": "^\\+[1-9][0-9]{6,14}$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "firstName",
+                      "phoneE164"
+                    ],
+                    "type": "object"
+                  },
+                  "customerNotes": {
+                    "anyOf": [
+                      {
+                        "maxLength": 1000,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "locationId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "resourceId": {
+                    "anyOf": [
+                      {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "serviceId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "startAt": {
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "serviceId",
+                  "locationId",
+                  "startAt",
+                  "customer"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "manageToken": {
+                      "pattern": "^[A-Za-z0-9_-]{43}$",
+                      "type": "string"
+                    },
+                    "reservation": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "canCancel": {
+                          "type": "boolean"
+                        },
+                        "canReschedule": {
+                          "type": "boolean"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "durationMinutes": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        "endAt": {
+                          "type": "string"
+                        },
+                        "holdExpiresAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "locationAddress": {
+                          "additionalProperties": {},
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "locationId": {
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "type": "string"
+                        },
+                        "locationName": {
+                          "type": "string"
+                        },
+                        "policyNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resourceName": {
+                          "type": "string"
+                        },
+                        "serviceId": {
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "type": "string"
+                        },
+                        "serviceName": {
+                          "type": "string"
+                        },
+                        "startAt": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "enum": [
+                            "pending",
+                            "confirmed",
+                            "in_progress",
+                            "completed",
+                            "cancelled",
+                            "no_show"
+                          ],
+                          "type": "string"
+                        },
+                        "tenantName": {
+                          "type": "string"
+                        },
+                        "tenantSlug": {
+                          "type": "string"
+                        },
+                        "timeZone": {
+                          "type": "string"
+                        },
+                        "totalAmount": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "status",
+                        "startAt",
+                        "endAt",
+                        "timeZone",
+                        "holdExpiresAt",
+                        "tenantName",
+                        "tenantSlug",
+                        "serviceId",
+                        "serviceName",
+                        "durationMinutes",
+                        "totalAmount",
+                        "currency",
+                        "locationId",
+                        "locationName",
+                        "locationAddress",
+                        "resourceName",
+                        "version",
+                        "canCancel",
+                        "canReschedule",
+                        "policyNote"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "reservation",
+                    "manageToken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Datos inválidos o falta Idempotency-Key"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "El negocio no existe, no está activo o no tiene reservas en línea"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Horario no disponible (SLOT_UNAVAILABLE) o demasiadas reservas activas para ese teléfono (LIMIT_REACHED)"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Fuera de la antelación permitida, o Idempotency-Key reutilizada con otros datos"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Reservar (portal)",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 10,
+            "name": "public-book-ip",
+            "windowSec": 600
+          },
+          {
+            "by": "phone",
+            "limit": 5,
+            "name": "public-book-phone",
+            "windowSec": 3600
+          }
+        ]
+      }
+    },
+    "/public/tenants/{slug}/services": {
+      "get": {
+        "operationId": "Public_services",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "categoryName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "durationMinutes": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      "id": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      },
+                      "imageUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "price": {
+                        "type": "string"
+                      },
+                      "requiresConfirmation": {
+                        "type": "boolean"
+                      },
+                      "resources": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "description",
+                      "categoryName",
+                      "durationMinutes",
+                      "price",
+                      "currency",
+                      "imageUrl",
+                      "requiresConfirmation",
+                      "resources"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Datos inválidos (VALIDATION_ERROR)"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "El negocio no existe, no está activo o no tiene reservas en línea, o la sucursal no existe"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [],
+        "summary": "Servicios reservables en línea de una sucursal",
+        "tags": [
+          "Public"
+        ],
+        "x-authorization": "public",
+        "x-rate-limits": [
+          {
+            "by": "ip",
+            "limit": 120,
+            "name": "public-read",
+            "windowSec": 60
+          }
+        ]
       }
     },
     "/reservations": {
@@ -14587,6 +16251,9 @@
     },
     {
       "name": "Members"
+    },
+    {
+      "name": "Public"
     },
     {
       "name": "PublicInvitations"

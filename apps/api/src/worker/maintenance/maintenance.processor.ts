@@ -13,7 +13,17 @@ import { MaintenanceService } from './maintenance.service.js';
 
 export const MAINTENANCE_QUEUE = 'maintenance';
 export const JOB_PURGE_TOKENS = 'purge-expired-tokens';
+export const JOB_EXPIRE_HOLDS = 'expire-holds';
+export const JOB_PURGE_IDEMPOTENCY = 'purge-idempotency-keys';
 const SCHEDULER_PURGE_TOKENS = 'purge-expired-tokens-daily';
+const SCHEDULER_EXPIRE_HOLDS = 'expire-holds-every-minute';
+const SCHEDULER_PURGE_IDEMPOTENCY = 'purge-idempotency-keys-daily';
+const JOB_OPTS = {
+  attempts: 3,
+  backoff: { type: 'exponential', delay: 30_000 },
+  removeOnComplete: 50,
+  removeOnFail: 200,
+};
 
 /**
  * Cola de mantenimiento. Solo corre en el proceso worker (worker.ts), NUNCA en la API:
@@ -59,13 +69,19 @@ export class MaintenanceProcessor implements OnApplicationBootstrap, OnModuleDes
       { pattern: '0 3 * * *', tz: 'UTC' },
       {
         name: JOB_PURGE_TOKENS,
-        opts: {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 30_000 },
-          removeOnComplete: 50,
-          removeOnFail: 200,
-        },
+        opts: JOB_OPTS,
       },
+    );
+    // Retenciones vencidas: cada minuto (el motor ya las ignora al reservar; esto libera y deja constancia).
+    await this.queue.upsertJobScheduler(
+      SCHEDULER_EXPIRE_HOLDS,
+      { pattern: '* * * * *', tz: 'UTC' },
+      { name: JOB_EXPIRE_HOLDS, opts: { ...JOB_OPTS, attempts: 1 } },
+    );
+    await this.queue.upsertJobScheduler(
+      SCHEDULER_PURGE_IDEMPOTENCY,
+      { pattern: '15 3 * * *', tz: 'UTC' },
+      { name: JOB_PURGE_IDEMPOTENCY, opts: JOB_OPTS },
     );
     this.logger.info(
       { queue: MAINTENANCE_QUEUE, prefix: this.prefix },
@@ -78,6 +94,10 @@ export class MaintenanceProcessor implements OnApplicationBootstrap, OnModuleDes
     switch (job.name) {
       case JOB_PURGE_TOKENS:
         return this.maintenance.purgeExpiredTokens();
+      case JOB_EXPIRE_HOLDS:
+        return this.maintenance.expireHolds();
+      case JOB_PURGE_IDEMPOTENCY:
+        return this.maintenance.purgeIdempotencyKeys();
       default:
         throw new Error(`job desconocido: ${job.name}`);
     }

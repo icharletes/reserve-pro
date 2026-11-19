@@ -16,7 +16,7 @@ import type { AuthedRequest } from '../auth/principal.js';
 import { LOGGER } from '../logging/logger.js';
 import { RedisModule, RedisService } from '../redis/redis.module.js';
 
-export type RateLimitBy = 'ip' | 'ip+email' | 'email' | 'user' | 'tenant';
+export type RateLimitBy = 'ip' | 'ip+email' | 'email' | 'phone' | 'user' | 'tenant';
 
 export interface RateLimitRule {
   /** Nombre estable de la regla (forma parte de la clave). */
@@ -31,7 +31,7 @@ export const RATE_LIMIT_KEY = 'reservepro:ratelimit';
 /** Reglas por endpoint. Se evalúan ADEMÁS de la regla global por IP. */
 export const RateLimit = (...rules: RateLimitRule[]) => SetMetadata(RATE_LIMIT_KEY, rules);
 
-const PRE_AUTH: RateLimitBy[] = ['ip', 'ip+email', 'email'];
+const PRE_AUTH: RateLimitBy[] = ['ip', 'ip+email', 'email', 'phone'];
 const POST_AUTH: RateLimitBy[] = ['user', 'tenant'];
 
 /** Ventana fija atómica: INCR + PEXPIRE en un solo paso (sin carrera entre ambos). */
@@ -81,6 +81,12 @@ export class RateLimitService {
         return email || ip; // sin email en el cuerpo se limita por IP
       case 'ip+email':
         return `${ip}|${email}`;
+      case 'phone': {
+        // Reservas públicas: el teléfono del cliente (`customer.phoneE164`). Sin él, por IP.
+        const phone = (req.body as { customer?: { phoneE164?: unknown } } | undefined)?.customer
+          ?.phoneE164;
+        return typeof phone === 'string' ? `tel:${phone.slice(0, 20)}` : ip;
+      }
       case 'user':
         return req.principal?.userId ?? ip;
       case 'tenant':

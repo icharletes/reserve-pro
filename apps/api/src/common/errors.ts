@@ -91,4 +91,5 @@ export const Errors = {
     ),
   invalidTransition: (message: string) => new AppError(409, 'INVALID_TRANSITION', message),
   hasReservations: (message: string) => new AppError(409, 'HAS_RESERVATIONS', message),
+  policyViolation: (message: string) => new AppError(409, 'POLICY_VIOLATION', message),
 };
