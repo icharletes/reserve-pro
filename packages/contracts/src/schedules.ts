@@ -198,6 +198,18 @@ export const calendarResponse = z.object({
           reason: z.string().nullable(),
         }),
       ),
+      /** Reservas activas (no canceladas) del recurso en el rango. Ventana visible del cliente, en UTC. */
+      reservations: z.array(
+        z.object({
+          id: uuid,
+          code: z.string(),
+          status: z.string(),
+          start: z.string(),
+          end: z.string(),
+          customerName: z.string(),
+          serviceName: z.string(),
+        }),
+      ),
     }),
   ),
 });

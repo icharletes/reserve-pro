@@ -233,3 +233,15 @@ export function formatClock(minutes: number): string {
   const h = Math.floor(minutes / 60);
   return `${String(h).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
+
+/** Fecha de calendario ('YYYY-MM-DD') que tiene el instante `at` en la zona horaria dada. */
+export function localDateOf(at: Date, timezone: string): string {
+  if (!isValidTimezone(timezone)) throw new RangeError(`Zona horaria inválida: ${timezone}`);
+  return DateTime.fromJSDate(at, { zone: timezone }).toISODate()!;
+}
+
+/** Suma días de CALENDARIO a una fecha 'YYYY-MM-DD'. */
+export function addCalendarDays(date: string, days: number): string {
+  assertDate(date);
+  return DateTime.fromISO(date, { zone: 'utc' }).plus({ days }).toISODate()!;
+}
