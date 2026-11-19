@@ -6,3 +6,4 @@ export * from './members.js';
 export * from './audit.js';
 export * from './catalog.js';
 export * from './schedules.js';
+export * from './reservations.js';

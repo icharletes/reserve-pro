@@ -80,4 +80,15 @@ export const Errors = {
   validation: (errors: FieldError[]) =>
     new AppError(400, 'VALIDATION_ERROR', 'Los datos enviados no son válidos', errors),
   internal: (message = 'Error interno') => new AppError(500, 'INTERNAL_ERROR', message),
+  slotUnavailable: (message = 'Ese horario ya no está disponible. Elige otro.') =>
+    new AppError(409, 'SLOT_UNAVAILABLE', message),
+  outsideBookingWindow: (message: string) => new AppError(422, 'OUTSIDE_BOOKING_WINDOW', message),
+  versionConflict: () =>
+    new AppError(
+      409,
+      'VERSION_CONFLICT',
+      'Otra persona modificó esta reserva mientras la editabas. Recarga para ver los cambios.',
+    ),
+  invalidTransition: (message: string) => new AppError(409, 'INVALID_TRANSITION', message),
+  hasReservations: (message: string) => new AppError(409, 'HAS_RESERVATIONS', message),
 };

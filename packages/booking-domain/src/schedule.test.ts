@@ -318,3 +318,15 @@ describe('cambio de hora (DST)', () => {
     expect(r).toHaveLength(1); // 24x7: un único rango continuo atravesando el cambio de hora
   });
 });
+
+describe('fecha local de un instante', () => {
+  it('depende de la zona: el mismo instante es otro día en Santiago y en Kolkata', async () => {
+    const { localDateOf, addCalendarDays } = await import('./schedule.js');
+    const at = new Date('2027-07-05T02:00:00Z');
+    expect(localDateOf(at, 'America/Santiago')).toBe('2027-07-04');
+    expect(localDateOf(at, 'Asia/Kolkata')).toBe('2027-07-05');
+    expect(addCalendarDays('2027-12-31', 1)).toBe('2028-01-01');
+    expect(addCalendarDays('2027-03-01', -1)).toBe('2027-02-28');
+    expect(() => localDateOf(at, 'Marte/Olympus')).toThrow(RangeError);
+  });
+});
