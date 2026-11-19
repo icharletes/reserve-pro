@@ -312,3 +312,69 @@ describe('aislamiento y referencias entre empresas', () => {
     ).rejects.toThrow(/permission denied/i);
   });
 });
+
+describe('enlaces de gestión (migración 0007)', () => {
+  const hash = (n: number) => Buffer.alloc(32, n);
+  const insertToken = (
+    reservation: string,
+    h: Buffer,
+    extra: { tenant?: string; expires?: string; revoked?: boolean; scopes?: string[] } = {},
+  ) =>
+    owner.query(
+      `INSERT INTO reservation_access_tokens(id,tenant_id,reservation_id,token_hash,scopes,expires_at,revoked_at)
+       VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6)`,
+      [
+        extra.tenant ?? A,
+        reservation,
+        h,
+        extra.scopes ?? ['view', 'cancel'],
+        extra.expires ?? '2099-01-01T00:00:00Z',
+        extra.revoked ? new Date() : null,
+      ],
+    );
+  const resolve = (h: Buffer) =>
+    db.$queryRaw<{ tenant_id: string; reservation_id: string }[]>`
+      SELECT tenant_id, reservation_id FROM rp_resolve_reservation_token(${Uint8Array.from(h)})`;
+
+  it('la función resuelve SOLO un hash exacto, vigente y no revocado, sin contexto de tenant', async () => {
+    const r = await book(owner, { start: T(19), end: T(20) });
+    await insertToken(r, hash(1));
+    await insertToken(r, hash(2), { expires: '2000-01-01T00:00:00Z' });
+    await insertToken(r, hash(3), { revoked: true });
+    expect(await resolve(hash(1))).toEqual([{ tenant_id: A, reservation_id: r }]);
+    expect(await resolve(hash(2))).toEqual([]); // vencido
+    expect(await resolve(hash(3))).toEqual([]); // revocado
+    expect(await resolve(hash(4))).toEqual([]); // inexistente
+    // la tabla en sí sigue protegida por RLS: sin contexto no se lee nada
+    expect(await db.reservation_access_tokens.count()).toBe(0);
+  });
+
+  it('alcances válidos, hash de 32 bytes y referencias de la MISMA empresa', async () => {
+    const r = await book(owner, { start: T(20), end: T(21) });
+    await expect(insertToken(r, hash(5), { scopes: ['admin'] })).rejects.toThrow(/check/i);
+    await expect(insertToken(r, hash(6), { scopes: [] })).rejects.toThrow(/check/i);
+    await expect(insertToken(r, Buffer.alloc(8, 7))).rejects.toThrow(/check/i);
+    await expect(insertToken(r, hash(8), { tenant: B })).rejects.toThrow(/foreign key/i);
+  });
+});
+
+describe('RLS en TODAS las tablas de empresa (CLAUDE.md, ADR-004)', () => {
+  it('toda tabla con columna tenant_id tiene RLS habilitado y FORZADO', async () => {
+    const { rows } = await owner.query<{ table: string; rls: boolean; forced: boolean }>(`
+      SELECT c.relname AS table, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+        JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped
+       WHERE c.relkind = 'r'
+       ORDER BY 1`);
+    expect(rows.length).toBeGreaterThan(20);
+    const missing = rows.filter((r) => !(r.rls && r.forced)).map((r) => r.table);
+    expect(missing).toEqual([]);
+  });
+
+  it('las particiones de auditoría no se pueden leer directamente (RLS no se hereda al consultarlas)', async () => {
+    await expect(db.$queryRaw`SELECT count(*) FROM audit_logs_default`).rejects.toThrow(
+      /permission denied/i,
+    );
+  });
+});

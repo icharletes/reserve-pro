@@ -112,6 +112,15 @@ describe('controles de seguridad derivados del contrato', () => {
     'POST /auth/verify-email',
     'POST /invitations/preview',
     'POST /invitations/accept',
+    // Portal público (ADR-015)
+    'GET /public/tenants/{slug}',
+    'GET /public/tenants/{slug}/services',
+    'GET /public/tenants/{slug}/availability',
+    'POST /public/tenants/{slug}/reservations',
+    'POST /public/manage/lookup',
+    'POST /public/manage/availability',
+    'POST /public/manage/cancel',
+    'POST /public/manage/reschedule',
   ].sort();
 
   it('los únicos endpoints públicos son los esperados', () => {

@@ -156,20 +156,22 @@ model tenant_memberships {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model tenant_settings {
-  tenant_id                  String   @id @db.Uuid
-  booking_min_notice_minutes Int      @default(60)
-  booking_max_advance_days   Int      @default(90)
-  slot_step_minutes          Int      @default(15)
-  auto_confirm               Boolean  @default(true)
-  pending_hold_minutes       Int      @default(30)
-  cancel_window_hours        Int      @default(24)
-  cancel_requires_approval   Boolean  @default(false)
-  reschedule_window_hours    Int      @default(24)
-  max_reschedules            Int      @default(2)
-  self_service_actions       Json     @default("{\"cancel\": true, \"confirm\": true, \"details\": true, \"reschedule\": true}")
-  branding                   Json     @default("{}")
-  updated_at                 DateTime @default(now()) @db.Timestamptz(6)
-  tenants                    tenants  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant_id                      String   @id @db.Uuid
+  booking_min_notice_minutes     Int      @default(60)
+  booking_max_advance_days       Int      @default(90)
+  slot_step_minutes              Int      @default(15)
+  auto_confirm                   Boolean  @default(true)
+  pending_hold_minutes           Int      @default(30)
+  cancel_window_hours            Int      @default(24)
+  cancel_requires_approval       Boolean  @default(false)
+  reschedule_window_hours        Int      @default(24)
+  max_reschedules                Int      @default(2)
+  self_service_actions           Json     @default("{\"cancel\": true, \"confirm\": true, \"details\": true, \"reschedule\": true}")
+  branding                       Json     @default("{}")
+  updated_at                     DateTime @default(now()) @db.Timestamptz(6)
+  public_booking_enabled         Boolean  @default(true)
+  max_active_public_per_customer Int      @default(3)
+  tenants                        tenants  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -563,37 +565,38 @@ model reservation_resources {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model reservations {
-  id                       String                  @id @db.Uuid
-  tenant_id                String                  @db.Uuid
-  code                     String                  @db.VarChar(12)
-  location_id              String                  @db.Uuid
-  customer_id              String                  @db.Uuid
-  status                   String                  @default("pending")
-  source                   String
-  start_at                 DateTime                @db.Timestamptz(6)
-  end_at                   DateTime                @db.Timestamptz(6)
-  time_zone                String                  @db.VarChar(60)
-  total_amount             Decimal                 @db.Decimal(12, 2)
-  currency                 String                  @db.Char(3)
-  paid_amount              Decimal                 @default(0) @db.Decimal(12, 2)
-  reschedule_count         Int                     @default(0)
-  hold_expires_at          DateTime?               @db.Timestamptz(6)
-  customer_notes           String?                 @db.VarChar(1000)
-  internal_notes           String?                 @db.VarChar(2000)
-  cancelled_at             DateTime?               @db.Timestamptz(6)
-  cancelled_by_type        String?
-  cancellation_reason      String?                 @db.VarChar(300)
-  version                  Int                     @default(1)
-  created_by_membership_id String?                 @db.Uuid
-  created_at               DateTime                @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime                @default(now()) @db.Timestamptz(6)
-  reservation_events       reservation_events[]
-  reservation_items        reservation_items[]
-  reservation_resources    reservation_resources[]
-  tenant_memberships       tenant_memberships?     @relation(fields: [tenant_id, created_by_membership_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
-  customers                customers               @relation(fields: [tenant_id, customer_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
-  tenants                  tenants                 @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  locations                locations               @relation(fields: [tenant_id, location_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  id                        String                      @id @db.Uuid
+  tenant_id                 String                      @db.Uuid
+  code                      String                      @db.VarChar(12)
+  location_id               String                      @db.Uuid
+  customer_id               String                      @db.Uuid
+  status                    String                      @default("pending")
+  source                    String
+  start_at                  DateTime                    @db.Timestamptz(6)
+  end_at                    DateTime                    @db.Timestamptz(6)
+  time_zone                 String                      @db.VarChar(60)
+  total_amount              Decimal                     @db.Decimal(12, 2)
+  currency                  String                      @db.Char(3)
+  paid_amount               Decimal                     @default(0) @db.Decimal(12, 2)
+  reschedule_count          Int                         @default(0)
+  hold_expires_at           DateTime?                   @db.Timestamptz(6)
+  customer_notes            String?                     @db.VarChar(1000)
+  internal_notes            String?                     @db.VarChar(2000)
+  cancelled_at              DateTime?                   @db.Timestamptz(6)
+  cancelled_by_type         String?
+  cancellation_reason       String?                     @db.VarChar(300)
+  version                   Int                         @default(1)
+  created_by_membership_id  String?                     @db.Uuid
+  created_at                DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                    @default(now()) @db.Timestamptz(6)
+  reservation_access_tokens reservation_access_tokens[]
+  reservation_events        reservation_events[]
+  reservation_items         reservation_items[]
+  reservation_resources     reservation_resources[]
+  tenant_memberships        tenant_memberships?         @relation(fields: [tenant_id, created_by_membership_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  customers                 customers                   @relation(fields: [tenant_id, customer_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  tenants                   tenants                     @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  locations                 locations                   @relation(fields: [tenant_id, location_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([tenant_id, code])
   @@unique([tenant_id, id])
@@ -602,4 +605,22 @@ model reservations {
   @@index([tenant_id, location_id, start_at], map: "ix_reservations_location")
   @@index([tenant_id, start_at], map: "ix_reservations_start")
   @@index([tenant_id, status, start_at], map: "ix_reservations_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model reservation_access_tokens {
+  id             String       @id @db.Uuid
+  tenant_id      String       @db.Uuid
+  reservation_id String       @db.Uuid
+  token_hash     Bytes        @unique
+  scopes         String[]
+  expires_at     DateTime     @db.Timestamptz(6)
+  revoked_at     DateTime?    @db.Timestamptz(6)
+  last_used_at   DateTime?    @db.Timestamptz(6)
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  reservations   reservations @relation(fields: [tenant_id, reservation_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, id])
+  @@index([tenant_id, reservation_id], map: "ix_rat_reservation")
 }

@@ -2,6 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Logger } from 'pino';
 import { TenantDb } from '../../platform/database/database.module.js';
 import { LOGGER } from '../../platform/logging/logger.js';
+import { AuditService } from '../../platform/audit/audit.module.js';
+import { expireHolds } from '../../modules/reservations/actor.js';
+import { SystemDb } from './system-db.js';
 
 const BATCH = 1_000;
 const DAY_MS = 86_400_000;
@@ -23,6 +26,8 @@ export interface PurgeResult {
 export class MaintenanceService {
   constructor(
     private readonly tdb: TenantDb,
+    private readonly system: SystemDb,
+    private readonly audit: AuditService,
     @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
@@ -52,6 +57,37 @@ export class MaintenanceService {
     const result = { refreshTokens, passwordResetTokens, emailVerificationTokens };
     this.logger.info({ ...result }, 'mantenimiento: tokens vencidos purgados');
     return result;
+  }
+
+  /**
+   * Libera las reservas pendientes cuya retención venció. `rp_system` solo DESCUBRE qué empresas tienen
+   * trabajo; la liberación corre por empresa con RLS y con la misma función que usa el motor de reservas.
+   */
+  async expireHolds(now: Date = new Date()): Promise<{ tenants: number; expired: number }> {
+    const tenants = await this.system.client.$queryRaw<{ tenant_id: string }[]>`
+      SELECT DISTINCT tenant_id FROM reservations
+       WHERE status = 'pending' AND hold_expires_at <= ${now}
+       LIMIT 500`;
+    let expired = 0;
+    for (const { tenant_id: tenantId } of tenants) {
+      expired += await this.tdb.run({ tenantId }, (tx) =>
+        expireHolds(tx, this.audit, tenantId, {}, now),
+      );
+    }
+    if (expired > 0)
+      this.logger.info({ tenants: tenants.length, expired }, 'retenciones vencidas liberadas');
+    return { tenants: tenants.length, expired };
+  }
+
+  /** Borra claves de idempotencia vencidas (24 h). Tabla con RLS de todas las empresas: requiere rp_system. */
+  async purgeIdempotencyKeys(now: Date = new Date()): Promise<number> {
+    const db = this.system.client;
+    const n = await this.inBatches(
+      () =>
+        db.$executeRaw`DELETE FROM idempotency_keys WHERE ctid IN (SELECT ctid FROM idempotency_keys WHERE expires_at < ${now} LIMIT ${BATCH})`,
+    );
+    this.logger.info({ idempotencyKeys: n }, 'mantenimiento: claves de idempotencia purgadas');
+    return n;
   }
 
   private async inBatches(deleteBatch: () => Promise<number>): Promise<number> {

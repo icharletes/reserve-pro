@@ -145,6 +145,15 @@ export async function loadBusy(
       occupy_start: { lt: window.end },
       occupy_end: { gt: window.start },
       ...(excludeReservationId ? { reservation_id: { not: excludeReservationId } } : {}),
+      // Una retención vencida ya no ocupa, aunque el worker aún no la haya liberado (la escritura la libera
+      // bajo el lock antes de comprobar). OR explícito: evita la lógica de tres valores de NOT con NULL.
+      reservations: {
+        OR: [
+          { status: { not: 'pending' } },
+          { hold_expires_at: null },
+          { hold_expires_at: { gt: new Date() } },
+        ],
+      },
     },
     select: { resource_id: true, occupy_start: true, occupy_end: true },
   });
@@ -220,24 +229,46 @@ export const DEFAULT_SETTINGS = {
   booking_max_advance_days: 90,
   slot_step_minutes: 15,
   auto_confirm: true,
+  pending_hold_minutes: 30,
+  cancel_window_hours: 24,
+  cancel_requires_approval: false,
+  reschedule_window_hours: 24,
+  max_reschedules: 2,
+  self_service_actions: { cancel: true, confirm: true, details: true, reschedule: true } as unknown,
+  public_booking_enabled: true,
+  max_active_public_per_customer: 3,
 };
+export type BookingSettings = typeof DEFAULT_SETTINGS;
 
-export async function loadSettings(tx: Tx): Promise<typeof DEFAULT_SETTINGS> {
+/** Configuración de reservas de la empresa (la fila existe desde el registro; si no, los valores por defecto). */
+export async function loadSettings(tx: Tx): Promise<BookingSettings> {
   const s = await tx.tenant_settings.findFirst();
-  return s ?? DEFAULT_SETTINGS;
+  return s ? { ...DEFAULT_SETTINGS, ...s } : DEFAULT_SETTINGS;
 }
 
 /**
  * Servicio reservable en una sucursal, con los recursos que pueden prestarlo allí (activos).
  * Lanza 404/400 con mensajes para el usuario si el servicio no se ofrece.
  */
-export async function loadBookable(tx: Tx, serviceId: string, locationId: string) {
+export async function loadBookable(
+  tx: Tx,
+  serviceId: string,
+  locationId: string,
+  /** Canales públicos: solo recursos reservables online. */
+  onlineOnly = false,
+) {
   const service = await tx.services.findFirst({
     where: { id: serviceId },
     include: {
       service_locations: { where: { location_id: locationId }, select: { location_id: true } },
       service_resources: {
-        where: { resources: { location_id: locationId, is_active: true } },
+        where: {
+          resources: {
+            location_id: locationId,
+            is_active: true,
+            ...(onlineOnly ? { is_bookable_online: true } : {}),
+          },
+        },
         select: { resource_id: true, resources: { select: { auto_assignable: true } } },
       },
     },

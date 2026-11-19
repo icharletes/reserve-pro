@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma, Tx } from '@reservepro/database';
 import { AppError } from '../../common/errors.js';
-import { TenantDb } from '../database/database.module.js';
 
 const TTL_MS = 24 * 60 * 60 * 1000;
 const KEY_RE = /^[A-Za-z0-9_-]{8,100}$/;
@@ -56,7 +55,8 @@ export type Claim = { replay: { status: number; body: unknown } } | { replay: nu
  */
 @Injectable()
 export class IdempotencyService {
-  constructor(private readonly tdb: TenantDb) {}
+  // La empresa sale del contexto de la transacción (`rp_current_tenant()`, el mismo que aplica RLS), no de la
+  // sesión: así sirve igual para el panel y para el portal público.
 
   async claim(
     tx: Tx,
@@ -66,7 +66,7 @@ export class IdempotencyService {
   ): Promise<Claim> {
     const inserted = await tx.$queryRaw<{ key: string }[]>`
       INSERT INTO idempotency_keys (tenant_id, scope, key, request_hash, status, expires_at)
-      VALUES (${this.tdb.tenantId}::uuid, ${scope}, ${key}, ${requestHash}, 'in_progress', ${new Date(Date.now() + TTL_MS)})
+      VALUES (rp_current_tenant(), ${scope}, ${key}, ${requestHash}, 'in_progress', ${new Date(Date.now() + TTL_MS)})
       ON CONFLICT (tenant_id, scope, key) DO NOTHING
       RETURNING key`;
     if (inserted.length === 1) return { replay: null };
@@ -91,8 +91,8 @@ export class IdempotencyService {
   }
 
   async complete(tx: Tx, scope: string, key: string, status: number, body: unknown): Promise<void> {
-    await tx.idempotency_keys.update({
-      where: { tenant_id_scope_key: { tenant_id: this.tdb.tenantId, scope, key } },
+    await tx.idempotency_keys.updateMany({
+      where: { scope, key }, // RLS limita a la empresa de la transacción
       data: {
         status: 'completed',
         response_code: status,

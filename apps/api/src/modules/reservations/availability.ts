@@ -33,9 +33,29 @@ const DAY = 86_400_000;
 export class AvailabilityService {
   constructor(private readonly tdb: TenantDb) {}
 
-  async get(q: AvailabilityQuery, source: BookingSource = 'admin'): Promise<AvailabilityResponse> {
-    return this.tdb.runAsPrincipal(async (tx) => {
-      const { service, location, resourceIds } = await loadBookable(tx, q.serviceId, q.locationId);
+  /**
+   * Panel: la empresa de la sesión. Portal: la del slug (`tenantId` explícito), con la antelación de los canales
+   * públicos y solo recursos reservables online.
+   */
+  async get(
+    q: AvailabilityQuery,
+    opts: {
+      tenantId?: string;
+      source?: BookingSource;
+      onlineOnly?: boolean;
+      /** Al reprogramar: la propia reserva no cuenta como ocupada. */
+      excludeReservationId?: string;
+    } = {},
+  ): Promise<AvailabilityResponse> {
+    const source = opts.source ?? 'admin';
+    const tenantId = opts.tenantId ?? this.tdb.tenantId;
+    return this.tdb.run({ tenantId }, async (tx) => {
+      const { service, location, resourceIds } = await loadBookable(
+        tx,
+        q.serviceId,
+        q.locationId,
+        opts.onlineOnly,
+      );
       if (q.resourceId && !resourceIds.includes(q.resourceId)) throw Errors.notFound('Recurso');
       const ids = q.resourceId ? [q.resourceId] : resourceIds;
       const settings = await loadSettings(tx);
@@ -45,10 +65,15 @@ export class AvailabilityService {
       const tenant = await tx.tenants.findFirstOrThrow({ select: { timezone: true } });
       const timezone = location.timezone ?? tenant.timezone;
       const window = localWindow(timezone, q.from, lastDate);
-      const busy = await loadBusy(tx, ids, {
-        start: new Date(window.start.getTime() - DAY),
-        end: new Date(window.end.getTime() + DAY),
-      });
+      const busy = await loadBusy(
+        tx,
+        ids,
+        {
+          start: new Date(window.start.getTime() - DAY),
+          end: new Date(window.end.getTime() + DAY),
+        },
+        opts.excludeReservationId,
+      );
       const limits = bookingWindow(source, settings, service, new Date());
       const timing = {
         durationMinutes: service.duration_minutes,
