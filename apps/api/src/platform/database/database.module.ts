@@ -55,6 +55,19 @@ export class TenantDb {
     return withTenant(this.database.client, { tenantId: p.tenantId }, fn);
   }
 
+  /** Empresa activa del principal (para rellenar `tenant_id` al crear filas; RLS lo vuelve a exigir). */
+  get tenantId(): string {
+    const p = this.cls.get('principal');
+    if (!p) throw Errors.unauthenticated();
+    if (!p.tenantId) throw Errors.tenantRequired();
+    return p.tenantId;
+  }
+
+  /** Membresía del principal en la empresa activa (autoría informativa de registros). */
+  get membershipId(): string | null {
+    return this.cls.get('principal')?.membershipId ?? null;
+  }
+
   /**
    * Cliente SIN contexto de tenant. Solo para tablas globales sin RLS (users, refresh_tokens,
    * permissions, reserved_slugs). Sobre tablas de tenant devuelve 0 filas (RLS falla cerrado).

@@ -279,3 +279,174 @@ describe('construcción de peticiones', () => {
     expect(calls[0]!.init.body).toContain('TOKEN-SECRETO');
   });
 });
+
+describe('endpoints de catálogo y agenda', () => {
+  const U = '0194f3a2-7b1c-7d3e-8a4f-1b2c3d4e5f60';
+  type Call = [
+    name: string,
+    run: (api: ApiClient) => Promise<unknown>,
+    method: string,
+    path: string,
+    body?: unknown,
+  ];
+  const table: Call[] = [
+    [
+      'listLocations',
+      (a) => a.listLocations({ q: 'x', limit: 5 }),
+      'GET',
+      '/locations?q=x&limit=5',
+    ],
+    [
+      'createLocation',
+      (a) => a.createLocation({ name: 'Centro', address: {} }),
+      'POST',
+      '/locations',
+      { name: 'Centro', address: {} },
+    ],
+    [
+      'updateLocation',
+      (a) => a.updateLocation(U, { isActive: false }),
+      'PATCH',
+      `/locations/${U}`,
+      { isActive: false },
+    ],
+    ['deleteLocation', (a) => a.deleteLocation(U), 'DELETE', `/locations/${U}`],
+    ['listServices', (a) => a.listServices({ isActive: true }), 'GET', '/services?isActive=true'],
+    [
+      'setServiceLocations',
+      (a) => a.setServiceLocations(U, { locationIds: [U] }),
+      'PUT',
+      `/services/${U}/locations`,
+      { locationIds: [U] },
+    ],
+    [
+      'setServiceResources',
+      (a) => a.setServiceResources(U, { resourceIds: [] }),
+      'PUT',
+      `/services/${U}/resources`,
+      { resourceIds: [] },
+    ],
+    [
+      'listResources',
+      (a) => a.listResources({ locationId: U }),
+      'GET',
+      `/resources?locationId=${U}`,
+    ],
+    [
+      'setBusinessHours',
+      (a) => a.setBusinessHours(U, { intervals: [] }),
+      'PUT',
+      `/locations/${U}/business-hours`,
+      { intervals: [] },
+    ],
+    [
+      'setResourceSchedule',
+      (a) => a.setResourceSchedule(U, { intervals: [] }),
+      'PUT',
+      `/resources/${U}/schedule`,
+      { intervals: [] },
+    ],
+    [
+      'listOverrides',
+      (a) => a.listOverrides('resources', U, { from: '2027-01-01', to: '2027-01-31' }),
+      'GET',
+      `/resources/${U}/overrides?from=2027-01-01&to=2027-01-31`,
+    ],
+    [
+      'putOverride',
+      (a) => a.putOverride('locations', U, '2027-12-25', { closed: true, intervals: [] }),
+      'PUT',
+      `/locations/${U}/overrides/2027-12-25`,
+      { closed: true, intervals: [] },
+    ],
+    [
+      'deleteOverride',
+      (a) => a.deleteOverride('locations', U, '2027-12-25'),
+      'DELETE',
+      `/locations/${U}/overrides/2027-12-25`,
+    ],
+    ['listHolidays', (a) => a.listHolidays(2027), 'GET', '/holidays?year=2027'],
+    [
+      'putHoliday',
+      (a) => a.putHoliday('2027-09-18', { name: 'Fiestas' }),
+      'PUT',
+      '/holidays/2027-09-18',
+      { name: 'Fiestas' },
+    ],
+    [
+      'updateBlock',
+      (a) => a.updateBlock(U, { reason: 'x' }),
+      'PATCH',
+      `/blocks/${U}`,
+      { reason: 'x' },
+    ],
+    ['deleteBlock', (a) => a.deleteBlock(U), 'DELETE', `/blocks/${U}`],
+    [
+      'getCalendar',
+      (a) => a.getCalendar({ from: '2027-07-05', to: '2027-07-11' }),
+      'GET',
+      '/calendar?from=2027-07-05&to=2027-07-11',
+    ],
+  ];
+
+  it.each(table)(
+    '%s usa el método, la ruta y el cuerpo correctos',
+    async (_name, run, method, path, body) => {
+      const { fn, calls } = mockFetch(() => new Response(null, { status: 204 }));
+      const api = new ApiClient({ fetch: fn, validateResponses: false });
+      api.setAccessToken('t');
+      await run(api);
+      const call = calls[0]!;
+      expect(call.init.method).toBe(method);
+      expect(call.url).toBe(`/api/v1${path}`);
+      if (body !== undefined) expect(JSON.parse(call.init.body as string)).toEqual(body);
+      else expect(call.init.body).toBeUndefined();
+    },
+  );
+
+  it('los ids y fechas se escapan: no pueden alterar la ruta', async () => {
+    const { fn, calls } = mockFetch(() => new Response(null, { status: 204 }));
+    const api = new ApiClient({ fetch: fn });
+    api.setAccessToken('t');
+    await api.deleteLocation('../../tenants/current?x=1');
+    await api.deleteOverride('locations', U, '../../x');
+    expect(calls[0]!.url).toBe(
+      `/api/v1/locations/${encodeURIComponent('../../tenants/current?x=1')}`,
+    );
+    expect(calls[1]!.url).not.toContain('/../');
+  });
+
+  it('valida la forma de un listado de servicios (precio como texto) y rechaza una respuesta distinta', async () => {
+    const service = {
+      id: U,
+      name: 'Corte',
+      description: null,
+      categoryId: null,
+      durationMinutes: 30,
+      bufferBeforeMinutes: 0,
+      bufferAfterMinutes: 0,
+      price: '12990.00',
+      currency: 'CLP',
+      minNoticeMinutes: null,
+      maxAdvanceDays: null,
+      requiresConfirmation: null,
+      imageUrl: null,
+      isActive: true,
+      locationIds: [],
+      resourceIds: [],
+      createdAt: '2027-01-01T00:00:00.000Z',
+    };
+    const ok = new ApiClient({
+      fetch: mockFetch(() => json(200, { items: [service], nextCursor: null })).fn,
+    });
+    ok.setAccessToken('t');
+    expect((await ok.listServices()).items[0]!.price).toBe('12990.00');
+
+    const numeric = new ApiClient({
+      fetch: mockFetch(() => json(200, { items: [{ ...service, price: 12990 }], nextCursor: null }))
+        .fn,
+    });
+    numeric.setAccessToken('t');
+    await expect(numeric.listServices()).rejects.toMatchObject({ code: 'INVALID_RESPONSE' }); // el dinero NO viaja como número
+  });
+});

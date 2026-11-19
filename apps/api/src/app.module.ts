@@ -4,6 +4,9 @@ import { ClsModule } from 'nestjs-cls';
 import type { Request } from 'express';
 import { ProblemFilter } from './common/problem.filter.js';
 import { ConfigModule } from './config/app-config.js';
+import { CalendarModule } from './modules/calendar/calendar.module.js';
+import { SchedulesModule } from './modules/schedules/schedules.module.js';
+import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module.js';
 import { MembersModule } from './modules/members/members.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -50,6 +53,9 @@ import { RbacModule } from './platform/rbac/rbac.module.js';
     TenantsModule,
     MembersModule,
     AuditLogsModule,
+    CatalogModule,
+    SchedulesModule,
+    CalendarModule,
     HealthModule,
     OpenApiModule,
   ],

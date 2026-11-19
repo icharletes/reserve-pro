@@ -6,7 +6,7 @@ export const AUTHZ_KEY = 'reservepro:authz';
 export type AuthzMeta =
   | { kind: 'public' }
   | { kind: 'authenticated' }
-  | { kind: 'permissions'; permissions: readonly PermissionKey[] };
+  | { kind: 'permissions'; permissions: readonly PermissionKey[]; mode: 'all' | 'any' };
 
 /**
  * TODO endpoint debe declarar explícitamente su política. Si falta, el guard rechaza la petición
@@ -22,7 +22,14 @@ export const Authenticated = () =>
 
 /** Exige empresa activa y TODOS los permisos indicados. */
 export const RequirePermissions = (...permissions: PermissionKey[]) =>
-  SetMetadata(AUTHZ_KEY, { kind: 'permissions', permissions } satisfies AuthzMeta);
+  SetMetadata(AUTHZ_KEY, { kind: 'permissions', permissions, mode: 'all' } satisfies AuthzMeta);
+
+/**
+ * Exige empresa activa y AL MENOS UNO de los permisos (p. ej. `calendar:read` o `calendar:read:own`).
+ * El servicio debe aplicar después el alcance que corresponda al permiso que sí tiene.
+ */
+export const RequireAnyPermission = (...permissions: PermissionKey[]) =>
+  SetMetadata(AUTHZ_KEY, { kind: 'permissions', permissions, mode: 'any' } satisfies AuthzMeta);
 
 export const VERIFIED_EMAIL_KEY = 'reservepro:verified-email';
 

@@ -16,6 +16,14 @@ async function logout() {
     <strong class="brand">ReservePro</strong>
     <nav aria-label="Principal">
       <RouterLink to="/">Inicio</RouterLink>
+      <RouterLink v-if="auth.canAny('calendar:read', 'calendar:read:own')" to="/calendar"
+        >Calendario</RouterLink
+      >
+      <RouterLink v-if="auth.can('locations:read')" to="/locations">Sucursales</RouterLink>
+      <RouterLink v-if="auth.can('services:read')" to="/services">Servicios</RouterLink>
+      <RouterLink v-if="auth.can('resources:read')" to="/resources">Recursos</RouterLink>
+      <RouterLink v-if="auth.can('blocks:read')" to="/blocks">Bloqueos</RouterLink>
+      <RouterLink v-if="auth.can('schedules:read')" to="/holidays">Feriados</RouterLink>
       <RouterLink v-if="auth.can('members:read')" to="/members">Equipo</RouterLink>
       <RouterLink v-if="auth.can('audit:read')" to="/audit">Auditoría</RouterLink>
     </nav>

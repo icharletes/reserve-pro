@@ -34,14 +34,11 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Toda consulta de tenant va por `withTenant(db, {tenantId}, tx => …)`; nunca por el cliente suelto.
 
 ## Estado
-**Fase 1 (Fundamentos) completa.** Pendiente solo lo operativo: ejecutar el workflow en GitHub real y proteger `main`.
-- ✔ Monorepo, Docker, `booking-domain` (máquina de estados), `contracts`, `database` (migraciones 0001–0004, RLS, `withTenant`).
-- ✔ `apps/api`: auth (register/login/refresh con rotación/logout/switch-tenant/me), verificación de email, recuperar/cambiar contraseña, RBAC fail-closed (38 permisos, 5 roles), invitaciones y miembros (anti-escalada, último propietario), auditoría (escritura y consulta), rate limiting con Redis, OpenAPI generado, health.
-- ✔ Worker (`worker.ts`, BullMQ): purga diaria de tokens vencidos.
-- ✔ `packages/api-client`, `apps/admin` (Vue), `apps/web` (Astro SSR).
-- ✔ ESLint (reglas de arquitectura y seguridad) + Prettier + CI + Dependabot.
-- 317 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md` (~300 req/s por instancia en endpoints autenticados).
-- **Siguiente: Fase 2 (catálogo y agenda)**: sucursales, servicios, recursos, horarios, bloqueos, calendario.
+**Fases 1 y 2 completas** (rama `fase-2-catalogo-agenda`, ver PR). Siguiente: **Fase 3, motor de reservas** (la más crítica; ver ARCHITECTURE.md §6).
+- ✔ Fase 1: monorepo, auth, RBAC, invitaciones, rate limiting, OpenAPI, worker, panel y portal, lint y CI.
+- ✔ Fase 2 (ADR-013): catálogo (sucursales, categorías, servicios, recursos), agenda (horarios semanales, excepciones, feriados, bloqueos) y calendario de solo lectura; resolución de horarios con DST en `booking-domain`; pantallas del panel.
+- 529 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
+- **Fase 3 debe recordar** (ADR-013): bloqueos vs. reservas, desactivar con reservas futuras, cambio de horario con reservas hechas, y que `DELETE` pasará a dar `IN_USE` por FK.
 
 ## Reglas de código de la API
 - Todo endpoint declara `@Public()`, `@Authenticated()` o `@RequirePermissions()`; sin eso no se ejecuta.
@@ -56,3 +53,7 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Todo endpoint nuevo: `@ApiDoc` + política de autorización; un test falla si falta. Todo POST público necesita `@RateLimit`. Tras cambiar endpoints, regenerar OpenAPI.
 - `astro check` no funciona (dependencia beta); el portal usa `astro sync` + `tsc` y `astro build`.
 - Medir antes de optimizar; no cachear la identidad (rompería la desactivación inmediata). Ver PERFORMANCE.md.
+- Esquemas de EDICIÓN (`update*Request`): derivarlos de un esquema base SIN `default()`, nunca de el de creación con `.partial()` (reiniciaba campos en silencio, ADR-013).
+- Horarios: minutos de pared 0–1440 y días ISO 1–7; la resolución a UTC vive solo en `booking-domain/schedule.ts`.
+- Scripts que editan archivos con `str.replace`: **verificar que el patrón coincidió** (assert). Prettier reformatea el texto y un reemplazo que no coincide falla en silencio.
+- `main` está protegida: todo cambio va por rama + pull request + CI en verde.
