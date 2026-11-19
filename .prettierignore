@@ -12,3 +12,6 @@ docs/api/openapi.json
 # Documentación y plantillas Astro: se editan a mano con su propio estilo.
 **/*.md
 **/*.astro
+
+e2e/test-results
+e2e/playwright-report

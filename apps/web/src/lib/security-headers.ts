@@ -23,6 +23,12 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'Cross-Origin-Opener-Policy': 'same-origin',
 };
 
+/** Una página puede fijar una política de referer MÁS estricta (p. ej. /mi-reserva: `no-referrer`). */
+const PAGE_MAY_TIGHTEN = new Set(['Referrer-Policy']);
+
 export function applySecurityHeaders(headers: Headers): void {
-  for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    if (PAGE_MAY_TIGHTEN.has(name) && headers.get(name) === 'no-referrer') continue;
+    headers.set(name, value);
+  }
 }

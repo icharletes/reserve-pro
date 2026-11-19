@@ -1,0 +1,13 @@
+---
+import ManageReservation from '../components/ManageReservation.vue';
+import Base from '../layouts/Base.astro';
+
+// El token llega en el FRAGMENTO (#token=…): el servidor nunca lo ve. Esta página es igual para todos.
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+
+<Base title="Mi reserva" noindex>
+  <ManageReservation client:load />
+  <noscript><p>Para gestionar tu reserva necesitas activar JavaScript.</p></noscript>
+</Base>

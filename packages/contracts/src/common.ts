@@ -31,6 +31,9 @@ export const RESERVED_SLUGS = [
   'support',
   'help',
   'docs',
+  // rutas del portal público (apps/web/src/pages)
+  'mi-reserva',
+  'reservas',
 ] as const;
 
 export const uuid = z.string().uuid();

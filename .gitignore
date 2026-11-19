@@ -17,3 +17,7 @@ coverage/
 
 # Cliente Prisma generado (se regenera con `pnpm generate`)
 packages/database/src/generated/
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/

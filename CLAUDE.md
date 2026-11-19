@@ -21,6 +21,7 @@ pnpm install            pnpm db:up / db:down / db:reset   (Postgres, Redis, Mail
 pnpm build|typecheck|test   (turbo)        pnpm lint | pnpm format:check | pnpm format
 pnpm --filter @reservepro/api openapi:generate     (regenerar docs/api/openapi.json tras tocar endpoints)
 pnpm --filter @reservepro/api start | start:worker (API y worker)      pnpm --filter @reservepro/admin dev
+pnpm test:e2e   (Playwright; recrea reservepro_e2e_test; en Mac usa el Chrome instalado)
 pnpm --filter @reservepro/database db:migrate      (aplicar migraciones; luego `prisma db pull` + `generate`)
 ```
 Antes de dar algo por terminado: `pnpm exec eslint . --max-warnings 0 && pnpm format:check && pnpm typecheck && pnpm build && pnpm test`.
@@ -34,13 +35,14 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Toda consulta de tenant va por `withTenant(db, {tenantId}, tx => …)`; nunca por el cliente suelto.
 
 ## Estado
-**Fases 1–3 y 4A completas** (4A en rama `fase-4-reservas-publicas`). Siguiente: **Fase 4B, portal Astro** (flujo de reserva y página de gestión por `#token=`; E2E Playwright).
+**Fases 1–4 completas** (4B en rama `fase-4b-portal-astro`). Siguiente: **Fase 5, comunicaciones por email** (publisher del outbox, plantillas, email con el enlace de gestión, recordatorios). Pendiente cercano: pantalla de configuración de políticas en el panel.
 - ✔ Fase 1: monorepo, auth, RBAC, invitaciones, rate limiting, OpenAPI, worker, panel y portal, lint y CI.
 - ✔ Fase 2 (ADR-013): catálogo (sucursales, categorías, servicios, recursos), agenda (horarios semanales, excepciones, feriados, bloqueos) y calendario de solo lectura; resolución de horarios con DST en `booking-domain`; pantallas del panel.
 - ✔ Fase 3A (ADR-014): clientes, disponibilidad, reservas (bloqueo + re-validación + EXCLUDE), idempotencia, versión optimista, eventos/outbox, calendario con reservas, agenda vs reservas.
 - ✔ Fase 3B: panel de reservas (lista, nueva, detalle con acciones/reprogramar/historial), clientes, reservas en calendario e inicio.
 - ✔ Fase 4A (ADR-015): API pública por slug, enlace de gestión (token en el cuerpo), políticas de autogestión, retenciones con barrido del worker, antiabuso por teléfono; RLS forzado verificado en TODAS las tablas.
-- 648 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
+- ✔ Fase 4B (ADR-016): portal `/{slug}` (SSR + isla de reserva) y `/mi-reserva#token=…`; E2E Playwright escritorio+móvil.
+- 655 pruebas + 10 E2E (`pnpm test:e2e`). Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
 - Pendientes: CAPTCHA (Turnstile) en el portal; `Promise.all` dentro de transacciones en código antiguo (`blocks.ts`) → secuencial (pg@9 lo prohibirá).
 
 ## Reglas de código de la API

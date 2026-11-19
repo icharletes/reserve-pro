@@ -86,24 +86,8 @@ export function zonedMidnight(date: string, timezone: string): Date {
 export const formatLocalTime = (iso: string, timezone: string): string =>
   formatClock(localParts(iso, timezone).minute);
 
-const PHONE_SEPARATORS = /[\s().-]/g;
-const E164 = /^\+[1-9]\d{6,14}$/;
-
-/**
- * Teléfono a E.164 (+56912345678). Sin prefijo internacional se asume el del país por defecto. Devuelve null
- * si no parece un número válido (el servidor vuelve a validarlo).
- */
-export function normalizePhone(input: string, defaultCountryCode = '56'): string | null {
-  const raw = input.trim().replace(PHONE_SEPARATORS, '');
-  if (raw === '') return null;
-  let e164: string;
-  if (raw.startsWith('+')) e164 = raw;
-  else if (raw.startsWith('00')) e164 = `+${raw.slice(2)}`;
-  else if (raw.startsWith(defaultCountryCode) && raw.length > defaultCountryCode.length + 8)
-    e164 = `+${raw}`;
-  else e164 = `+${defaultCountryCode}${raw.replace(/^0+/, '')}`;
-  return E164.test(e164) ? e164 : null;
-}
+/** Normalización de teléfono: compartida con el portal (vive en `@reservepro/contracts`). */
+export { normalizePhone } from '@reservepro/contracts';
 
 /** Identificador nuevo para `Idempotency-Key`: uno por INTENCIÓN de reservar, reutilizado en los reintentos. */
 export const newIdempotencyKey = (): string => crypto.randomUUID();
