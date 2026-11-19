@@ -35,6 +35,7 @@ export const PERMISSIONS = {
   'calendar:read': 'Ver el calendario completo',
   'calendar:read:own': 'Ver solo el calendario propio',
   'notifications:read': 'Ver el centro de comunicaciones',
+  'notifications:resend': 'Reintentar el envío de comunicaciones',
   'integrations:read': 'Ver integraciones',
   'integrations:manage': 'Gestionar integraciones (WhatsApp, email)',
   'consents:read': 'Ver consentimientos',

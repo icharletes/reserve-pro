@@ -348,3 +348,58 @@ describe('recordatorios', () => {
     expect(mineReminders(c.tenantId)).toHaveLength(0);
   });
 });
+
+describe('centro de comunicaciones (panel)', () => {
+  it('lista lo enviado con su estado; una fallida se reintenta UNA vez desde el panel', async () => {
+    const b = await business();
+    const email = `p-${randomUUID().slice(0, 6)}@example.test`;
+    const r = await bookPublic(b, email);
+    await dispatch.publishOutbox(enqueuer);
+    const job = queued.find((q) => q.job.tenantId === b.tenantId)!.job as OutboxJob;
+    // se agotan los intentos automáticos (simulado: un fallo y no se reintenta)
+    mail.failures = 1;
+    await expect(notifications.handleOutboxEvent(job)).rejects.toThrow();
+
+    const list = await b.c.get('/notifications?status=failed');
+    expect(list.status).toBe(200);
+    expect(list.body.items).toHaveLength(1);
+    const n = list.body.items[0];
+    expect(n).toMatchObject({
+      channel: 'email',
+      type: 'reservation.created_confirmed',
+      recipient: email,
+      status: 'failed',
+      attempts: 1,
+      reservationCode: r.reservation.code,
+      customerName: 'Carla',
+    });
+    expect(n.subject).toMatch(/^Reserva confirmada/);
+
+    // sent no se puede reintentar; failed sí -> queda "en cola" y deja un evento para el worker
+    const retry = await b.c.post(`/notifications/${n.id}/retry`);
+    expect(retry.status).toBe(202);
+    expect(retry.body.status).toBe('queued');
+    expect((await b.c.post(`/notifications/${n.id}/retry`)).status).toBe(409);
+
+    const { results } = await pump(b.tenantId);
+    expect(results).toEqual(['sent']);
+    expect(mail.to(email)).toHaveLength(1);
+    const after = (await b.c.get(`/notifications?reservationId=${n.reservationId}`)).body.items;
+    expect(after).toEqual([expect.objectContaining({ id: n.id, status: 'sent', attempts: 2 })]);
+    // repetir el evento de reintento no reenvía
+    expect(await notifications.retry(b.tenantId, n.id)).toBe('duplicate');
+  });
+
+  it('aislamiento y permisos: otra empresa no ve ni reintenta; un profesional no entra', async () => {
+    const a = await business();
+    await bookPublic(a, `iso-${randomUUID().slice(0, 6)}@example.test`);
+    await pump(a.tenantId);
+    const id = (await a.c.get('/notifications')).body.items[0].id;
+    const other = await business();
+    expect((await other.c.get('/notifications')).body.items).toHaveLength(0);
+    expect((await other.c.post(`/notifications/${id}/retry`)).status).toBe(404);
+    const { joinTenant } = await import('./helpers.js');
+    const pro = await joinTenant(app, owner, a.tenantId, 'professional');
+    expect((await client(app, pro.auth).get('/notifications')).status).toBe(403);
+  });
+});

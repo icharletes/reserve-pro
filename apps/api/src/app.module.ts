@@ -7,6 +7,7 @@ import { ConfigModule } from './config/app-config.js';
 import { CalendarModule } from './modules/calendar/calendar.module.js';
 import { ReservationsModule } from './modules/reservations/reservations.module.js';
 import { PublicModule } from './modules/public/public.module.js';
+import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { SchedulesModule } from './modules/schedules/schedules.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module.js';
@@ -60,6 +61,7 @@ import { RbacModule } from './platform/rbac/rbac.module.js';
     CalendarModule,
     ReservationsModule,
     PublicModule,
+    NotificationsModule,
     HealthModule,
     OpenApiModule,
   ],

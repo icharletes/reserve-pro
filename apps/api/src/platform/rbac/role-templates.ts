@@ -51,6 +51,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'reservations:status',
       'calendar:read',
       'notifications:read',
+      'notifications:resend',
       'reports:read',
     ],
   },
@@ -75,6 +76,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'reservations:status',
       'calendar:read',
       'notifications:read',
+      'notifications:resend',
     ],
   },
   {

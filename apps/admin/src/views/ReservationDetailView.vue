@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ApiError } from '@reservepro/api-client';
-import type { ReservationEventView, ReservationView } from '@reservepro/contracts';
+import type {
+  NotificationView,
+  ReservationEventView,
+  ReservationView,
+} from '@reservepro/contracts';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api';
@@ -18,6 +22,7 @@ import {
   statusLabel,
 } from '../lib/reservations';
 import { localParts } from '../lib/schedule-format';
+import { NOTIFICATION_STATUS_LABELS, notificationTypeLabel } from '../lib/notifications';
 import { useAuthStore } from '../stores/auth';
 
 const auth = useAuthStore();
@@ -129,8 +134,16 @@ const reschedule = () => {
   );
 };
 
+const messages = ref<NotificationView[]>([]);
+async function loadMessages() {
+  if (!auth.can('notifications:read')) return;
+  const page = await api.listNotifications({ reservationId: id, limit: 50 }).catch(() => null);
+  if (page) messages.value = page.items;
+}
+
 onMounted(async () => {
   await load();
+  await loadMessages();
   if (auth.can('resources:read')) {
     const res = await api.listResources({ limit: 100 }).catch(() => null);
     if (res) resourceNames.value = new Map(res.items.map((x) => [x.id, x.name]));
@@ -247,6 +260,28 @@ onMounted(async () => {
           <span v-if="eventDetail(e)"> · {{ eventDetail(e) }}</span>
         </li>
       </ol>
+    </section>
+
+    <section v-if="auth.can('notifications:read')" class="card" aria-labelledby="mensajes">
+      <h2 id="mensajes" style="margin-top: 0">Mensajes al cliente</h2>
+      <p v-if="messages.length === 0" class="muted">
+        {{
+          r.customer.email
+            ? 'Aún no se ha enviado nada (los emails salen en segundos).'
+            : 'El cliente no tiene email: no se le envían mensajes.'
+        }}
+      </p>
+      <ul v-else class="timeline">
+        <li v-for="m in messages" :key="m.id">
+          <strong>{{ notificationTypeLabel(m.type) }}</strong>
+          <span class="muted"> · {{ fmt(m.sentAt ?? m.createdAt) }}</span>
+          ·
+          <span class="status" :class="`n-${m.status}`">{{
+            NOTIFICATION_STATUS_LABELS[m.status]
+          }}</span>
+        </li>
+      </ul>
+      <p><RouterLink to="/communications">Ver todas las comunicaciones</RouterLink></p>
     </section>
   </template>
 </template>

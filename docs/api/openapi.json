@@ -5988,6 +5988,458 @@
         "x-authorization": "authenticated"
       }
     },
+    "/notifications": {
+      "get": {
+        "description": "Emails enviados a clientes, más recientes primero. Filtros: `status`, `reservationId`.",
+        "operationId": "Notifications_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "queued",
+                "sending",
+                "sent",
+                "delivered",
+                "read",
+                "failed",
+                "suppressed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reservationId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "attempts": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          "channel": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "customerName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "lastError": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recipient": {
+                            "type": "string"
+                          },
+                          "reservationCode": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reservationId": {
+                            "anyOf": [
+                              {
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sentAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "queued",
+                              "sending",
+                              "sent",
+                              "delivered",
+                              "read",
+                              "failed",
+                              "suppressed"
+                            ],
+                            "type": "string"
+                          },
+                          "subject": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "channel",
+                          "type",
+                          "recipient",
+                          "subject",
+                          "status",
+                          "attempts",
+                          "lastError",
+                          "reservationId",
+                          "reservationCode",
+                          "customerName",
+                          "createdAt",
+                          "sentAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Datos inválidos (VALIDATION_ERROR)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No autenticado o sesión inválida (UNAUTHENTICATED / TOKEN_INVALID)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Sin permiso o sin empresa activa (FORBIDDEN / TENANT_REQUIRED)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Centro de comunicaciones",
+        "tags": [
+          "Notifications"
+        ],
+        "x-authorization": "permissions",
+        "x-permissions": [
+          "notifications:read"
+        ],
+        "x-permissions-mode": "all"
+      }
+    },
+    "/notifications/{id}/retry": {
+      "post": {
+        "description": "Tras agotarse los reintentos automáticos. El envío lo hace el worker en segundos; si entretanto ya se envió, no se repite.",
+        "operationId": "Notifications_retry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "attempts": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "channel": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "customerName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "lastError": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "recipient": {
+                      "type": "string"
+                    },
+                    "reservationCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "reservationId": {
+                      "anyOf": [
+                        {
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "sentAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "enum": [
+                        "queued",
+                        "sending",
+                        "sent",
+                        "delivered",
+                        "read",
+                        "failed",
+                        "suppressed"
+                      ],
+                      "type": "string"
+                    },
+                    "subject": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "channel",
+                    "type",
+                    "recipient",
+                    "subject",
+                    "status",
+                    "attempts",
+                    "lastError",
+                    "reservationId",
+                    "reservationCode",
+                    "customerName",
+                    "createdAt",
+                    "sentAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Datos inválidos (VALIDATION_ERROR)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No autenticado o sesión inválida (UNAUTHENTICATED / TOKEN_INVALID)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Sin permiso o sin empresa activa (FORBIDDEN / TENANT_REQUIRED)"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Comunicación no encontrada"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Solo se reintentan las fallidas"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Reintentar una comunicación fallida",
+        "tags": [
+          "Notifications"
+        ],
+        "x-authorization": "permissions",
+        "x-permissions": [
+          "notifications:resend"
+        ],
+        "x-permissions-mode": "all"
+      }
+    },
     "/public/manage/availability": {
       "post": {
         "description": "Mismo profesional/recurso; la propia reserva no cuenta como ocupada.",
@@ -16205,6 +16657,498 @@
         ],
         "x-permissions-mode": "all"
       }
+    },
+    "/tenants/current/settings": {
+      "get": {
+        "description": "Portal, antelación, confirmación, políticas de autogestión, recordatorios y emails.",
+        "operationId": "TenantSettings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "autoConfirm": {
+                      "type": "boolean"
+                    },
+                    "bookingMaxAdvanceDays": {
+                      "maximum": 730,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "bookingMinNoticeMinutes": {
+                      "maximum": 43200,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "cancelRequiresApproval": {
+                      "type": "boolean"
+                    },
+                    "cancelWindowHours": {
+                      "maximum": 720,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "customerEmailsEnabled": {
+                      "type": "boolean"
+                    },
+                    "maxActivePublicPerCustomer": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxReschedules": {
+                      "maximum": 20,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "pendingHoldMinutes": {
+                      "maximum": 10080,
+                      "minimum": 5,
+                      "type": "integer"
+                    },
+                    "publicBookingEnabled": {
+                      "type": "boolean"
+                    },
+                    "reminderHoursBefore": {
+                      "anyOf": [
+                        {
+                          "maximum": 168,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "rescheduleWindowHours": {
+                      "maximum": 720,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "selfServiceCancel": {
+                      "type": "boolean"
+                    },
+                    "selfServiceReschedule": {
+                      "type": "boolean"
+                    },
+                    "slotStepMinutes": {
+                      "anyOf": [
+                        {
+                          "const": 5,
+                          "type": "number"
+                        },
+                        {
+                          "const": 10,
+                          "type": "number"
+                        },
+                        {
+                          "const": 15,
+                          "type": "number"
+                        },
+                        {
+                          "const": 20,
+                          "type": "number"
+                        },
+                        {
+                          "const": 30,
+                          "type": "number"
+                        },
+                        {
+                          "const": 60,
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "publicBookingEnabled",
+                    "bookingMinNoticeMinutes",
+                    "bookingMaxAdvanceDays",
+                    "slotStepMinutes",
+                    "autoConfirm",
+                    "pendingHoldMinutes",
+                    "selfServiceCancel",
+                    "cancelWindowHours",
+                    "cancelRequiresApproval",
+                    "selfServiceReschedule",
+                    "rescheduleWindowHours",
+                    "maxReschedules",
+                    "maxActivePublicPerCustomer",
+                    "customerEmailsEnabled",
+                    "reminderHoursBefore",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No autenticado o sesión inválida (UNAUTHENTICATED / TOKEN_INVALID)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Sin permiso o sin empresa activa (FORBIDDEN / TENANT_REQUIRED)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Configuración de reservas y comunicaciones",
+        "tags": [
+          "TenantSettings"
+        ],
+        "x-authorization": "permissions",
+        "x-permissions": [
+          "tenant:read"
+        ],
+        "x-permissions-mode": "all"
+      },
+      "patch": {
+        "description": "Actualización parcial: lo que no se envía no cambia. Aplica a la siguiente operación.",
+        "operationId": "TenantSettings_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "autoConfirm": {
+                    "type": "boolean"
+                  },
+                  "bookingMaxAdvanceDays": {
+                    "maximum": 730,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "bookingMinNoticeMinutes": {
+                    "maximum": 43200,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "cancelRequiresApproval": {
+                    "type": "boolean"
+                  },
+                  "cancelWindowHours": {
+                    "maximum": 720,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "customerEmailsEnabled": {
+                    "type": "boolean"
+                  },
+                  "maxActivePublicPerCustomer": {
+                    "maximum": 50,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "maxReschedules": {
+                    "maximum": 20,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "pendingHoldMinutes": {
+                    "maximum": 10080,
+                    "minimum": 5,
+                    "type": "integer"
+                  },
+                  "publicBookingEnabled": {
+                    "type": "boolean"
+                  },
+                  "reminderHoursBefore": {
+                    "anyOf": [
+                      {
+                        "maximum": 168,
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "rescheduleWindowHours": {
+                    "maximum": 720,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "selfServiceCancel": {
+                    "type": "boolean"
+                  },
+                  "selfServiceReschedule": {
+                    "type": "boolean"
+                  },
+                  "slotStepMinutes": {
+                    "anyOf": [
+                      {
+                        "const": 5,
+                        "type": "number"
+                      },
+                      {
+                        "const": 10,
+                        "type": "number"
+                      },
+                      {
+                        "const": 15,
+                        "type": "number"
+                      },
+                      {
+                        "const": 20,
+                        "type": "number"
+                      },
+                      {
+                        "const": 30,
+                        "type": "number"
+                      },
+                      {
+                        "const": 60,
+                        "type": "number"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "autoConfirm": {
+                      "type": "boolean"
+                    },
+                    "bookingMaxAdvanceDays": {
+                      "maximum": 730,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "bookingMinNoticeMinutes": {
+                      "maximum": 43200,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "cancelRequiresApproval": {
+                      "type": "boolean"
+                    },
+                    "cancelWindowHours": {
+                      "maximum": 720,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "customerEmailsEnabled": {
+                      "type": "boolean"
+                    },
+                    "maxActivePublicPerCustomer": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxReschedules": {
+                      "maximum": 20,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "pendingHoldMinutes": {
+                      "maximum": 10080,
+                      "minimum": 5,
+                      "type": "integer"
+                    },
+                    "publicBookingEnabled": {
+                      "type": "boolean"
+                    },
+                    "reminderHoursBefore": {
+                      "anyOf": [
+                        {
+                          "maximum": 168,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "rescheduleWindowHours": {
+                      "maximum": 720,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "selfServiceCancel": {
+                      "type": "boolean"
+                    },
+                    "selfServiceReschedule": {
+                      "type": "boolean"
+                    },
+                    "slotStepMinutes": {
+                      "anyOf": [
+                        {
+                          "const": 5,
+                          "type": "number"
+                        },
+                        {
+                          "const": 10,
+                          "type": "number"
+                        },
+                        {
+                          "const": 15,
+                          "type": "number"
+                        },
+                        {
+                          "const": 20,
+                          "type": "number"
+                        },
+                        {
+                          "const": 30,
+                          "type": "number"
+                        },
+                        {
+                          "const": 60,
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "publicBookingEnabled",
+                    "bookingMinNoticeMinutes",
+                    "bookingMaxAdvanceDays",
+                    "slotStepMinutes",
+                    "autoConfirm",
+                    "pendingHoldMinutes",
+                    "selfServiceCancel",
+                    "cancelWindowHours",
+                    "cancelRequiresApproval",
+                    "selfServiceReschedule",
+                    "rescheduleWindowHours",
+                    "maxReschedules",
+                    "maxActivePublicPerCustomer",
+                    "customerEmailsEnabled",
+                    "reminderHoursBefore",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Correcto"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Datos inválidos (VALIDATION_ERROR)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No autenticado o sesión inválida (UNAUTHENTICATED / TOKEN_INVALID)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Sin permiso o sin empresa activa (FORBIDDEN / TENANT_REQUIRED)"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Demasiadas solicitudes (RATE_LIMITED). Incluye Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error interno (INTERNAL_ERROR)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Editar la configuración",
+        "tags": [
+          "TenantSettings"
+        ],
+        "x-authorization": "permissions",
+        "x-permissions": [
+          "tenant:update"
+        ],
+        "x-permissions-mode": "all"
+      }
     }
   },
   "servers": [
@@ -16253,6 +17197,9 @@
       "name": "Members"
     },
     {
+      "name": "Notifications"
+    },
+    {
       "name": "Public"
     },
     {
@@ -16269,6 +17216,9 @@
     },
     {
       "name": "Services"
+    },
+    {
+      "name": "TenantSettings"
     },
     {
       "name": "Tenants"

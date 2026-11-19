@@ -12,6 +12,7 @@ import { ZodPipe } from '../../common/zod.pipe.js';
 import { AuditService } from '../../platform/audit/audit.module.js';
 import { TenantDb } from '../../platform/database/database.module.js';
 import { RequirePermissions } from '../../platform/rbac/authz.decorators.js';
+import { TenantSettingsController, TenantSettingsService } from './settings.js';
 
 const tenantSelect = {
   id: true,
@@ -118,5 +119,8 @@ export class TenantsController {
   }
 }
 
-@Module({ controllers: [TenantsController], providers: [TenantsService] })
+@Module({
+  controllers: [TenantsController, TenantSettingsController],
+  providers: [TenantsService, TenantSettingsService],
+})
 export class TenantsModule {}
