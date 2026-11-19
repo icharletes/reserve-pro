@@ -19,6 +19,12 @@ async function logout() {
       <RouterLink v-if="auth.canAny('calendar:read', 'calendar:read:own')" to="/calendar"
         >Calendario</RouterLink
       >
+      <RouterLink
+        v-if="auth.canAny('reservations:read', 'reservations:read:own')"
+        to="/reservations"
+        >Reservas</RouterLink
+      >
+      <RouterLink v-if="auth.can('customers:read')" to="/customers">Clientes</RouterLink>
       <RouterLink v-if="auth.can('locations:read')" to="/locations">Sucursales</RouterLink>
       <RouterLink v-if="auth.can('services:read')" to="/services">Servicios</RouterLink>
       <RouterLink v-if="auth.can('resources:read')" to="/resources">Recursos</RouterLink>

@@ -128,6 +128,30 @@ export const routes: RouteRecordRaw[] = [
     meta: { permissionAny: ['calendar:read', 'calendar:read:own'], title: 'Calendario' },
   },
   {
+    path: '/reservations',
+    name: 'reservations',
+    component: () => import('./views/ReservationsView.vue'),
+    meta: { permissionAny: ['reservations:read', 'reservations:read:own'], title: 'Reservas' },
+  },
+  {
+    path: '/reservations/new',
+    name: 'reservation-new',
+    component: () => import('./views/NewReservationView.vue'),
+    meta: { permission: 'reservations:create', title: 'Nueva reserva' },
+  },
+  {
+    path: '/reservations/:id',
+    name: 'reservation',
+    component: () => import('./views/ReservationDetailView.vue'),
+    meta: { permissionAny: ['reservations:read', 'reservations:read:own'], title: 'Reserva' },
+  },
+  {
+    path: '/customers',
+    name: 'customers',
+    component: () => import('./views/CustomersView.vue'),
+    meta: { permission: 'customers:read', title: 'Clientes' },
+  },
+  {
     path: '/forbidden',
     name: 'forbidden',
     component: () => import('./views/ForbiddenView.vue'),

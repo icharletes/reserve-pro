@@ -4,8 +4,10 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { api } from '../api';
 import AlertBox from '../components/AlertBox.vue';
 import { describeError } from '../lib/errors';
+import { formatLocalTime, statusLabel } from '../lib/reservations';
 import {
   addDays,
+  localParts,
   mondayOf,
   todayIn,
   utcRangeToLocalSegments,
@@ -43,24 +45,38 @@ async function load() {
   }
 }
 
-type Cell = { working: string[]; blocks: { text: string; reason: string | null }[] };
+type Booking = { id: string; time: string; label: string; status: string };
+type Cell = {
+  working: string[];
+  blocks: { text: string; reason: string | null }[];
+  reservations: Booking[];
+};
+const emptyCell = (): Cell => ({ working: [], blocks: [], reservations: [] });
+const canOpen = auth.canAny('reservations:read', 'reservations:read:own');
 /** Celdas por recurso y fecha LOCAL (la del recurso), no UTC. */
 const grid = computed(() => {
   const out = new Map<string, Map<string, Cell>>();
   for (const r of data.value?.resources ?? []) {
-    const byDate = new Map<string, Cell>(days.value.map((d) => [d, { working: [], blocks: [] }]));
+    const byDate = new Map<string, Cell>(days.value.map((d) => [d, emptyCell()]));
     for (const w of r.working)
       for (const s of utcRangeToLocalSegments(w, r.timezone))
         byDate.get(s.date)?.working.push(`${s.start}–${s.end}`);
     for (const b of r.blocks)
       for (const s of utcRangeToLocalSegments(b, r.timezone))
         byDate.get(s.date)?.blocks.push({ text: `${s.start}–${s.end}`, reason: b.reason });
+    // Cada reserva va en el día LOCAL en que empieza (hora del recurso).
+    for (const x of r.reservations)
+      byDate.get(localParts(x.start, r.timezone).date)?.reservations.push({
+        id: x.id,
+        time: `${formatLocalTime(x.start, r.timezone)}–${formatLocalTime(x.end, r.timezone)}`,
+        label: `${x.customerName} · ${x.serviceName}`,
+        status: x.status,
+      });
     out.set(r.resourceId, byDate);
   }
   return out;
 });
-const cell = (rid: string, date: string): Cell =>
-  grid.value.get(rid)?.get(date) ?? { working: [], blocks: [] };
+const cell = (rid: string, date: string): Cell => grid.value.get(rid)?.get(date) ?? emptyCell();
 
 const shift = (weeks: number) => (monday.value = addDays(monday.value, weeks * 7));
 const today = () =>
@@ -76,7 +92,10 @@ onMounted(async () => {
 <template>
   <h1>Calendario</h1>
   <p class="muted">
-    Horario de trabajo y bloqueos de cada recurso. Las reservas aparecerán aquí próximamente.
+    Horario de trabajo, bloqueos y reservas de cada recurso, en la hora local del recurso.
+  </p>
+  <p v-if="auth.can('reservations:create')">
+    <RouterLink class="btn btn-primary" to="/reservations/new">Nueva reserva</RouterLink>
   </p>
   <AlertBox v-if="error" kind="error">{{ error }}</AlertBox>
 
@@ -119,10 +138,24 @@ onMounted(async () => {
               :title="b.reason ?? 'Bloqueo'"
               >Bloqueo {{ b.text }}</span
             >
+            <template v-for="b in cell(r.resourceId, d).reservations" :key="b.id">
+              <RouterLink
+                v-if="canOpen"
+                :to="`/reservations/${b.id}`"
+                class="chip reservation"
+                :class="b.status"
+                :title="statusLabel(b.status)"
+                ><strong>{{ b.time }}</strong> {{ b.label }}</RouterLink
+              >
+              <span v-else class="chip reservation" :class="b.status"
+                ><strong>{{ b.time }}</strong> {{ b.label }}</span
+              >
+            </template>
             <span
               v-if="
                 cell(r.resourceId, d).working.length === 0 &&
-                cell(r.resourceId, d).blocks.length === 0
+                cell(r.resourceId, d).blocks.length === 0 &&
+                cell(r.resourceId, d).reservations.length === 0
               "
               class="muted"
               >—</span

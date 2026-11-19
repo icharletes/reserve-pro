@@ -1,7 +1,16 @@
 import {
   type AcceptInvitationRequest,
   type AuthResponse,
+  type AvailabilityQuery,
   type CalendarQuery,
+  type CancelReservationRequest,
+  type ChangeStatusRequest,
+  type CreateCustomerRequest,
+  type CreateReservationRequest,
+  type CustomerListQuery,
+  type ReservationListQuery,
+  type RescheduleReservationRequest,
+  type UpdateCustomerRequest,
   type ChangePasswordRequest,
   type CreateBlocksRequest,
   type CreateCategoryRequest,
@@ -31,6 +40,10 @@ import {
   acceptInvitationResponse,
   auditLogView,
   authResponse,
+  availabilityResponse,
+  customerView,
+  reservationEventView,
+  reservationView,
   blockView,
   businessHoursView,
   calendarResponse,
@@ -81,6 +94,8 @@ interface RequestOptions<T> {
   auth?: boolean;
   schema?: z.ZodType<T>;
   csrf?: boolean;
+  /** Cabeceras extra (p. ej. `Idempotency-Key`). Nunca para el token: lo gestiona el cliente. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -131,7 +146,7 @@ export class ApiClient {
       if (v !== undefined) qs.set(k, String(v));
     const url = `${this.base}${path}${qs.size > 0 ? `?${qs}` : ''}`;
 
-    const headers: Record<string, string> = { accept: 'application/json' };
+    const headers: Record<string, string> = { ...opts.headers, accept: 'application/json' };
     if (opts.body !== undefined) headers['content-type'] = 'application/json';
     if (auth && this.accessToken) headers['authorization'] = `Bearer ${this.accessToken}`;
     if (opts.csrf) headers['x-rp-csrf'] = '1'; // fuerza preflight CORS: otro sitio no puede enviarla
@@ -427,4 +442,53 @@ export class ApiClient {
 
   getCalendar = (q: CalendarQuery) =>
     this.request('GET', '/calendar', { query: q, schema: calendarResponse });
+
+  // ---------------------------------------------------------------------------------------------
+  // Clientes, disponibilidad y reservas
+  // ---------------------------------------------------------------------------------------------
+  listCustomers = (q: Partial<CustomerListQuery> = {}) =>
+    this.request('GET', '/customers', { query: q, schema: pageOf(customerView) });
+  getCustomer = (id: string) =>
+    this.request('GET', `/customers/${seg(id)}`, { schema: customerView });
+  createCustomer = (body: CreateCustomerRequest) =>
+    this.request('POST', '/customers', { body, schema: customerView });
+  updateCustomer = (id: string, body: UpdateCustomerRequest) =>
+    this.request('PATCH', `/customers/${seg(id)}`, { body, schema: customerView });
+
+  getAvailability = (
+    q: Partial<AvailabilityQuery> & Pick<AvailabilityQuery, 'serviceId' | 'locationId' | 'from'>,
+  ) => this.request('GET', '/availability', { query: q, schema: availabilityResponse });
+
+  listReservations = (q: Partial<ReservationListQuery> = {}) =>
+    this.request('GET', '/reservations', { query: q, schema: pageOf(reservationView) });
+  getReservation = (id: string) =>
+    this.request('GET', `/reservations/${seg(id)}`, { schema: reservationView });
+  listReservationEvents = (id: string) =>
+    this.request('GET', `/reservations/${seg(id)}/events`, {
+      schema: z.array(reservationEventView),
+    });
+  /**
+   * `idempotencyKey`: generarla UNA vez por intención de reservar y REUTILIZARLA al reintentar (error de red,
+   * doble clic). Así un reintento devuelve la misma reserva en vez de crear otra.
+   */
+  createReservation = (body: CreateReservationRequest, idempotencyKey: string) =>
+    this.request('POST', '/reservations', {
+      body,
+      schema: reservationView,
+      headers: { 'idempotency-key': idempotencyKey },
+    });
+  confirmReservation = (id: string, version: number) =>
+    this.request('POST', `/reservations/${seg(id)}/confirm`, {
+      body: { version },
+      schema: reservationView,
+    });
+  cancelReservation = (id: string, body: CancelReservationRequest) =>
+    this.request('POST', `/reservations/${seg(id)}/cancel`, { body, schema: reservationView });
+  changeReservationStatus = (id: string, body: ChangeStatusRequest) =>
+    this.request('POST', `/reservations/${seg(id)}/status`, { body, schema: reservationView });
+  rescheduleReservation = (id: string, body: RescheduleReservationRequest) =>
+    this.request('POST', `/reservations/${seg(id)}/reschedule`, {
+      body,
+      schema: reservationView,
+    });
 }

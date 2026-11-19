@@ -47,7 +47,22 @@ Con solo `reservations:read:own`, un profesional ve únicamente las reservas de 
 - **`DELETE` de un recurso con reservas** da 409 `IN_USE` por la clave foránea, como se previó.
 - **Cambiar el horario semanal con reservas ya hechas está permitido:** las reservas se mantienen. Es decisión del negocio (p. ej. reducir horario a partir de cierta fecha) y el calendario las muestra igual. Queda como mejora avisar en el panel de las reservas que quedan fuera del nuevo horario.
 
+## Panel (Fase 3B)
+- **Pantallas:**
+  - Reservas: lista con filtros por período, estado, sucursal y recurso.
+  - Nueva reserva: servicio, horario, cliente y confirmación.
+  - Detalle: acciones, reprogramación e historial.
+  - Clientes.
+  - Además, las reservas aparecen en el calendario y en "Reservas de hoy" del inicio.
+- **Horas siempre en la zona de la sucursal o la empresa**, nunca en la del navegador. Los filtros por día usan `zonedMidnight`, que maneja bien el día del cambio de hora, cuando las 00:00 no existen. Una reserva se muestra en la columna de su día LOCAL.
+- **Idempotency-Key en el panel:** se usa una clave por intención. Reenviar exactamente los mismos datos, por ejemplo tras un error de red o con un doble clic, reutiliza la clave y el servidor devuelve la misma reserva. Si cambia cualquier dato, se genera una clave nueva (verificado por mutación).
+- **Errores esperados:**
+  - 409 `SLOT_UNAVAILABLE`: se avisa y se recargan los horarios.
+  - 409 `VERSION_CONFLICT`: se recarga la reserva y se pide revisar.
+- **Botones:** el panel solo ofrece acciones válidas según el estado, la hora y los permisos. Usa una copia de la máquina de estados, porque el panel no puede importar `booking-domain`, y una prueba la compara con el código del dominio para que no diverjan. La autoridad sigue siendo la API.
+- **Teléfonos:** se normalizan a E.164 en el panel. Sin prefijo se asume +56. El servidor vuelve a validar.
+- **Limitación conocida:** el selector de horarios de "Reprogramar" no ofrece horarios que se solapen con la propia reserva (la disponibilidad la cuenta como ocupada), aunque la API sí permite moverla a ellos. Esto queda como mejora.
+
 ## Fuera de alcance (próximas fases)
-- Panel de reservas (Fase 3B).
 - Reservas públicas, retenciones (`hold_expires_at`) y su expiración en el worker, WhatsApp y autoservicio del cliente (Fase 4).
 - Publicación del outbox, servicios múltiples por reserva y capacidad > 1 (ADR-006).
