@@ -450,3 +450,62 @@ describe('endpoints de catálogo y agenda', () => {
     await expect(numeric.listServices()).rejects.toMatchObject({ code: 'INVALID_RESPONSE' }); // el dinero NO viaja como número
   });
 });
+
+describe('endpoints de reservas', () => {
+  const U = '0194f3a2-7b1c-7d3e-8a4f-1b2c3d4e5f60';
+  const setup = () => {
+    const m = mockFetch(() => json(200, {}));
+    const api = new ApiClient({ fetch: m.fn, validateResponses: false });
+    api.setAccessToken('t');
+    return { api, calls: m.calls };
+  };
+
+  it('crear envía la Idempotency-Key indicada; reintentar con la misma la repite', async () => {
+    const { api, calls } = setup();
+    const body = {
+      serviceId: U,
+      locationId: U,
+      startAt: '2027-07-05T13:00:00.000Z',
+      customer: { id: U },
+    };
+    await api.createReservation(body, 'clave-intento-0001');
+    await api.createReservation(body, 'clave-intento-0001');
+    expect(calls.map((c) => header(c, 'idempotency-key'))).toEqual([
+      'clave-intento-0001',
+      'clave-intento-0001',
+    ]);
+    expect(calls[0]!.init.method).toBe('POST');
+    expect(calls[0]!.url).toBe('/api/v1/reservations');
+    // una cabecera extra no puede pisar el token
+    expect(header(calls[0]!, 'authorization')).toBe('Bearer t');
+  });
+
+  it('las transiciones envían la versión y van a su ruta', async () => {
+    const { api, calls } = setup();
+    await api.confirmReservation(U, 3);
+    await api.cancelReservation(U, { version: 4, reason: 'x' });
+    await api.changeReservationStatus(U, { version: 5, status: 'completed' });
+    await api.rescheduleReservation(U, { version: 6, startAt: '2027-07-05T15:00:00.000Z' });
+    expect(calls.map((c) => [c.url, JSON.parse(String(c.init.body)).version])).toEqual([
+      [`/api/v1/reservations/${U}/confirm`, 3],
+      [`/api/v1/reservations/${U}/cancel`, 4],
+      [`/api/v1/reservations/${U}/status`, 5],
+      [`/api/v1/reservations/${U}/reschedule`, 6],
+    ]);
+    expect(calls.some((c) => header(c, 'idempotency-key') !== undefined)).toBe(false);
+  });
+
+  it('disponibilidad, listados y clientes construyen la query', async () => {
+    const { api, calls } = setup();
+    await api.getAvailability({ serviceId: U, locationId: U, from: '2027-07-05', days: 7 });
+    await api.listReservations({ status: 'confirmed', limit: 20 });
+    await api.listCustomers({ q: 'ana' });
+    await api.listReservationEvents(U);
+    expect(calls.map((c) => c.url)).toEqual([
+      `/api/v1/availability?serviceId=${U}&locationId=${U}&from=2027-07-05&days=7`,
+      '/api/v1/reservations?status=confirmed&limit=20',
+      '/api/v1/customers?q=ana',
+      `/api/v1/reservations/${U}/events`,
+    ]);
+  });
+});

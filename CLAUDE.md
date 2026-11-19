@@ -34,11 +34,12 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Toda consulta de tenant va por `withTenant(db, {tenantId}, tx => …)`; nunca por el cliente suelto.
 
 ## Estado
-**Fases 1, 2 y 3A completas** (3A en rama `fase-3a-motor-reservas`). Siguiente: **Fase 3B, panel de reservas** (crear, ver y gestionar reservas en el admin).
+**Fases 1, 2 y 3 completas** (3B en rama `fase-3b-panel-reservas`). Siguiente: **Fase 4, reservas públicas** (portal Astro + retenciones `pending` con expiración en el worker; ver ARCHITECTURE.md).
 - ✔ Fase 1: monorepo, auth, RBAC, invitaciones, rate limiting, OpenAPI, worker, panel y portal, lint y CI.
 - ✔ Fase 2 (ADR-013): catálogo (sucursales, categorías, servicios, recursos), agenda (horarios semanales, excepciones, feriados, bloqueos) y calendario de solo lectura; resolución de horarios con DST en `booking-domain`; pantallas del panel.
 - ✔ Fase 3A (ADR-014): clientes, disponibilidad, reservas (bloqueo + re-validación + EXCLUDE), idempotencia, versión optimista, eventos/outbox, calendario con reservas, agenda vs reservas.
-- 591 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
+- ✔ Fase 3B: panel de reservas (lista, nueva, detalle con acciones/reprogramar/historial), clientes, reservas en calendario e inicio.
+- 625 pruebas. Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
 - Pendientes: purgar `idempotency_keys` vencidas (worker, `rp_system`); `Promise.all` dentro de transacciones en código antiguo (`blocks.ts`) → secuencial (pg@9 lo prohibirá).
 
 ## Reglas de código de la API

@@ -87,6 +87,19 @@ const API_METHODS = [
   'createBlocks',
   'deleteBlock',
   'getCalendar',
+  'listCustomers',
+  'getCustomer',
+  'createCustomer',
+  'updateCustomer',
+  'getAvailability',
+  'listReservations',
+  'getReservation',
+  'listReservationEvents',
+  'createReservation',
+  'confirmReservation',
+  'cancelReservation',
+  'changeReservationStatus',
+  'rescheduleReservation',
 ] as const;
 
 /** Doble del módulo `../api`: cada prueba ajusta lo que necesita. */

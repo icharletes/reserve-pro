@@ -19,6 +19,9 @@ const MESSAGES: Record<string, string> = {
   LAST_OWNER: 'La empresa debe conservar al menos un propietario activo.',
   CANNOT_MODIFY_SELF: 'No puedes cambiar tu propio estado ni tus propios roles.',
   FORBIDDEN: 'No tienes permiso para realizar esta acción.',
+  VERSION_CONFLICT:
+    'Otra persona modificó esta reserva mientras tanto. Ya cargamos los cambios: revisa y vuelve a intentarlo.',
+  IDEMPOTENCY_IN_PROGRESS: 'La reserva se está procesando. Espera un momento.',
 };
 
 /**

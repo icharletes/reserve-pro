@@ -228,6 +228,7 @@ describe('CalendarView', () => {
         reason: 'Dentista',
       },
     ],
+    reservations: [],
     ...extra,
   });
   const setup = async (cal: object, perms = ['calendar:read', 'locations:read']) => {

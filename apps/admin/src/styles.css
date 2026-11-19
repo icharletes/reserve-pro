@@ -299,3 +299,100 @@ td {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* --- Reservas ------------------------------------------------------------------------------- */
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr));
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+.slot {
+  padding: 0.4rem 0;
+  font-variant-numeric: tabular-nums;
+}
+.slot.selected {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+}
+.status {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.status.pending {
+  color: #9a6700;
+}
+.status.confirmed,
+.status.in_progress {
+  color: var(--primary);
+}
+.status.completed {
+  color: var(--success);
+}
+.status.cancelled,
+.status.no_show {
+  color: var(--muted);
+}
+@media (prefers-color-scheme: dark) {
+  .status.pending {
+    color: #e3b341;
+  }
+}
+.chip.reservation {
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: inherit;
+  text-decoration: none;
+  text-align: left;
+}
+.chip.reservation.pending {
+  outline: 1px dashed var(--primary);
+}
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.timeline li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.steps {
+  display: grid;
+  gap: 1rem;
+}
+.result-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+.result-list li button {
+  width: 100%;
+  text-align: left;
+}
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0 0 1rem;
+}
+.details dt {
+  color: var(--muted);
+}
+.details dd {
+  margin: 0;
+}
+a.btn {
+  display: inline-block;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+  font-weight: 600;
+}
