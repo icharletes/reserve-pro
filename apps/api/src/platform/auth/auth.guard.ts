@@ -144,9 +144,11 @@ export class PermissionsGuard implements CanActivate {
     if (needsVerified && !principal.emailVerified) throw Errors.emailNotVerified();
     if (meta.kind !== 'permissions') return true; // 'authenticated': basta con la sesión
     if (!principal.tenantId) throw Errors.tenantRequired();
-    for (const required of meta.permissions) {
-      if (!principal.permissions.has(required)) throw Errors.forbidden();
-    }
+    const allowed =
+      meta.mode === 'any'
+        ? meta.permissions.some((p) => principal.permissions.has(p))
+        : meta.permissions.every((p) => principal.permissions.has(p));
+    if (!allowed) throw Errors.forbidden();
     return true;
   }
 }

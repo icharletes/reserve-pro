@@ -187,7 +187,9 @@ export class OpenApiService {
         ...(requestBody ? { requestBody } : {}),
         responses,
         'x-authorization': authz?.kind ?? 'undeclared',
-        ...(authz?.kind === 'permissions' ? { 'x-permissions': [...authz.permissions] } : {}),
+        ...(authz?.kind === 'permissions'
+          ? { 'x-permissions': [...authz.permissions], 'x-permissions-mode': authz.mode }
+          : {}),
         ...(needsVerified ? { 'x-requires-verified-email': true } : {}),
         ...(limits.length > 0 ? { 'x-rate-limits': limits } : {}),
         ...(r.controller === 'HealthController' ? { servers: [{ url: '/' }] } : {}),
