@@ -152,6 +152,18 @@ export const routes: RouteRecordRaw[] = [
     meta: { permission: 'customers:read', title: 'Clientes' },
   },
   {
+    path: '/communications',
+    name: 'communications',
+    component: () => import('./views/CommunicationsView.vue'),
+    meta: { permission: 'notifications:read', title: 'Comunicaciones' },
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('./views/SettingsView.vue'),
+    meta: { permission: 'tenant:read', title: 'Configuración' },
+  },
+  {
     path: '/forbidden',
     name: 'forbidden',
     component: () => import('./views/ForbiddenView.vue'),

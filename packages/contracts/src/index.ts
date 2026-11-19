@@ -9,3 +9,4 @@ export * from './schedules.js';
 export * from './reservations.js';
 export * from './public.js';
 export * from './phone.js';
+export * from './settings.js';

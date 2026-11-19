@@ -30,8 +30,12 @@ async function logout() {
       <RouterLink v-if="auth.can('resources:read')" to="/resources">Recursos</RouterLink>
       <RouterLink v-if="auth.can('blocks:read')" to="/blocks">Bloqueos</RouterLink>
       <RouterLink v-if="auth.can('schedules:read')" to="/holidays">Feriados</RouterLink>
+      <RouterLink v-if="auth.can('notifications:read')" to="/communications"
+        >Comunicaciones</RouterLink
+      >
       <RouterLink v-if="auth.can('members:read')" to="/members">Equipo</RouterLink>
       <RouterLink v-if="auth.can('audit:read')" to="/audit">Auditoría</RouterLink>
+      <RouterLink v-if="auth.can('tenant:read')" to="/settings">Configuración</RouterLink>
     </nav>
     <div class="topbar-right">
       <span class="tenant" :title="auth.user?.email">{{ auth.activeMembership?.tenantName }}</span>

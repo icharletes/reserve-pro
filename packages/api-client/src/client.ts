@@ -8,6 +8,8 @@ import {
   type CreateCustomerRequest,
   type CreateReservationRequest,
   type CustomerListQuery,
+  type NotificationListQuery,
+  type UpdateTenantSettingsRequest,
   type ReservationListQuery,
   type RescheduleReservationRequest,
   type UpdateCustomerRequest,
@@ -42,6 +44,8 @@ import {
   authResponse,
   availabilityResponse,
   customerView,
+  notificationView,
+  tenantSettingsView,
   reservationEventView,
   reservationView,
   blockView,
@@ -486,6 +490,18 @@ export class ApiClient {
     this.request('POST', `/reservations/${seg(id)}/cancel`, { body, schema: reservationView });
   changeReservationStatus = (id: string, body: ChangeStatusRequest) =>
     this.request('POST', `/reservations/${seg(id)}/status`, { body, schema: reservationView });
+  // ---------------------------------------------------------------------------------------------
+  // Configuración y centro de comunicaciones
+  // ---------------------------------------------------------------------------------------------
+  getTenantSettings = () =>
+    this.request('GET', '/tenants/current/settings', { schema: tenantSettingsView });
+  updateTenantSettings = (body: UpdateTenantSettingsRequest) =>
+    this.request('PATCH', '/tenants/current/settings', { body, schema: tenantSettingsView });
+  listNotifications = (q: Partial<NotificationListQuery> = {}) =>
+    this.request('GET', '/notifications', { query: q, schema: pageOf(notificationView) });
+  retryNotification = (id: string) =>
+    this.request('POST', `/notifications/${seg(id)}/retry`, { schema: notificationView });
+
   rescheduleReservation = (id: string, body: RescheduleReservationRequest) =>
     this.request('POST', `/reservations/${seg(id)}/reschedule`, {
       body,

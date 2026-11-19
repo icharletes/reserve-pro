@@ -100,6 +100,10 @@ const API_METHODS = [
   'cancelReservation',
   'changeReservationStatus',
   'rescheduleReservation',
+  'getTenantSettings',
+  'updateTenantSettings',
+  'listNotifications',
+  'retryNotification',
 ] as const;
 
 /** Doble del módulo `../api`: cada prueba ajusta lo que necesita. */

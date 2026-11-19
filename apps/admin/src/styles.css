@@ -396,3 +396,41 @@ a.btn {
   border-color: var(--primary);
   font-weight: 600;
 }
+
+/* --- Configuración y comunicaciones ---------------------------------------------------------- */
+fieldset.plain {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+label.check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.35rem 0;
+  font-weight: 500;
+}
+.small {
+  font-size: 0.85rem;
+}
+.sticky-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+}
+.status.n-sent,
+.status.n-delivered,
+.status.n-read {
+  color: var(--success);
+}
+.status.n-failed {
+  color: var(--danger);
+}
+.status.n-queued,
+.status.n-sending,
+.status.n-suppressed {
+  color: var(--muted);
+}

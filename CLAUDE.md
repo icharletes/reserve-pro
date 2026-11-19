@@ -35,7 +35,7 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - Toda consulta de tenant va por `withTenant(db, {tenantId}, tx => …)`; nunca por el cliente suelto.
 
 ## Estado
-**Fases 1–4 y 5A completas** (5A en rama `fase-5-emails`, apilada sobre 4B). Siguiente: **Fase 5B, panel**: centro de comunicaciones y pantalla de configuración (políticas, recordatorio, emails).
+**Fases 1–5 completas** (5B en rama `fase-5b-panel-comunicaciones`). **MVP vendible v0.1** (ARCHITECTURE.md §9). Siguiente: decidir hosting de producción (ADR-008) y piloto, o Fase 6 (WhatsApp).
 - ✔ Fase 1: monorepo, auth, RBAC, invitaciones, rate limiting, OpenAPI, worker, panel y portal, lint y CI.
 - ✔ Fase 2 (ADR-013): catálogo (sucursales, categorías, servicios, recursos), agenda (horarios semanales, excepciones, feriados, bloqueos) y calendario de solo lectura; resolución de horarios con DST en `booking-domain`; pantallas del panel.
 - ✔ Fase 3A (ADR-014): clientes, disponibilidad, reservas (bloqueo + re-validación + EXCLUDE), idempotencia, versión optimista, eventos/outbox, calendario con reservas, agenda vs reservas.
@@ -43,7 +43,8 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - ✔ Fase 4A (ADR-015): API pública por slug, enlace de gestión (token en el cuerpo), políticas de autogestión, retenciones con barrido del worker, antiabuso por teléfono; RLS forzado verificado en TODAS las tablas.
 - ✔ Fase 4B (ADR-016): portal `/{slug}` (SSR + isla de reserva) y `/mi-reserva#token=…`; E2E Playwright escritorio+móvil.
 - ✔ Fase 5A (ADR-017): outbox → BullMQ → email deduplicado al cliente (con enlace de gestión nuevo), recordatorio 24 h, consentimiento transaccional versionado.
-- 670 pruebas + 10 E2E (`pnpm test:e2e`). Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
+- ✔ Fase 5B: pantalla de Configuración (políticas, portal, recordatorio, emails) y centro de Comunicaciones con reintento manual (`notifications:resend`).
+- 681 pruebas + 10 E2E (`pnpm test:e2e`). Rendimiento medido: `docs/architecture/PERFORMANCE.md`.
 - Pendientes: CAPTCHA (Turnstile) en el portal; `Promise.all` dentro de transacciones en código antiguo (`blocks.ts`) → secuencial (pg@9 lo prohibirá).
 
 ## Reglas de código de la API
@@ -60,6 +61,7 @@ Entorno: **Node ≥ 22.23.4** (Astro 7; Prisma exige ≥ 20.19) (Prisma 7 exige 
 - `astro check` no funciona (dependencia beta); el portal usa `astro sync` + `tsc` y `astro build`.
 - Medir antes de optimizar; no cachear la identidad (rompería la desactivación inmediata). Ver PERFORMANCE.md.
 - Esquemas de EDICIÓN (`update*Request`): derivarlos de un esquema base SIN `default()`, nunca de el de creación con `.partial()` (reiniciaba campos en silencio, ADR-013).
+- Permiso NUEVO: añadirlo al catálogo, a las plantillas de rol Y con una migración a los roles de sistema de las empresas existentes (ver 0011).
 - Las tablas PARTICIONADAS no heredan RLS al consultar la partición: `REVOKE ALL` a `rp_app` + `rp_enable_tenant_rls` en cada partición (migración 0008).
 - El motor recibe un `Actor` (empresa, canal, tipo); nunca lee la sesión dentro. Portal y worker usan `*As(actor, …)`.
 - Emails al cliente: SOLO desde el worker (`NotificationsService`), nunca desde la request. Dedupe por `dedupe_key`; `rp_system` solo para descubrir trabajo, el envío con RLS. Pruebas del worker real: buzón falso.

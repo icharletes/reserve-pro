@@ -88,6 +88,9 @@ export class NotificationsService {
   ) {}
 
   async handleOutboxEvent(job: OutboxJob): Promise<DeliveryResult> {
+    if (job.type === 'notification.retry') {
+      return this.retry(job.tenantId, String(job.payload['notificationId'] ?? job.aggregateId));
+    }
     if (!job.type.startsWith('reservation.')) return 'skipped';
     const kind = emailKindFor(job.type, job.payload);
     if (!kind) return 'skipped';
@@ -105,11 +108,40 @@ export class NotificationsService {
     );
   }
 
+  /**
+   * Reintento MANUAL desde el centro de comunicaciones (tras agotar los automáticos). Reutiliza la misma fila
+   * (misma `dedupe_key`): si entretanto se envió, no se repite.
+   */
+  async retry(tenantId: string, notificationId: string): Promise<DeliveryResult> {
+    const row = await this.tdb.run({ tenantId }, (tx) =>
+      tx.notifications.findFirst({
+        where: { id: notificationId },
+        select: {
+          reservation_id: true,
+          type: true,
+          dedupe_key: true,
+          reference_at: true,
+          status: true,
+        },
+      }),
+    );
+    if (!row?.reservation_id || !row.type.startsWith('reservation.')) return 'skipped';
+    if (row.status === 'sent' || row.status === 'suppressed') return 'duplicate';
+    const kind = row.type.slice('reservation.'.length) as ReservationEmailKind;
+    return this.deliver(
+      tenantId,
+      row.reservation_id,
+      kind,
+      { dedupeKey: row.dedupe_key },
+      row.reference_at?.toISOString(),
+    );
+  }
+
   private async deliver(
     tenantId: string,
     reservationId: string,
     kind: ReservationEmailKind,
-    seed: string,
+    seed: string | { dedupeKey: string },
     reminderFor?: string,
   ): Promise<DeliveryResult> {
     const prepared = await this.tdb.run({ tenantId }, (tx) =>
@@ -147,7 +179,7 @@ export class NotificationsService {
     tenantId: string,
     reservationId: string,
     kind: ReservationEmailKind,
-    seed: string,
+    seed: string | { dedupeKey: string },
     reminderFor?: string,
   ) {
     const settings = await loadSettings(tx);
@@ -173,7 +205,10 @@ export class NotificationsService {
     }
 
     const recipient = r.customers.email;
-    const dedupeKey = sha256(`${seed}|email|${recipient.toLowerCase()}|${kind}`);
+    const dedupeKey =
+      typeof seed === 'string'
+        ? sha256(`${seed}|email|${recipient.toLowerCase()}|${kind}`)
+        : seed.dedupeKey;
     const type = kind === 'reminder' ? 'reservation.reminder' : `reservation.${kind}`;
     const inserted = await tx.$queryRaw<{ id: string }[]>`
       INSERT INTO notifications (id, tenant_id, reservation_id, customer_id, channel, type, recipient, dedupe_key, reference_at)

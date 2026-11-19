@@ -54,9 +54,23 @@
 - **`PORTAL_URL`** (nueva variable de entorno): base de los enlaces "Mi reserva" en los emails.
 - **Pruebas:** el worker real de las pruebas usa un buzón falso. Antes despachaba por SMTP los eventos de la base de pruebas, y así se detectó.
 
+## Panel (Fase 5B)
+- **Configuración** (`GET/PATCH /tenants/current/settings`; leer con `tenant:read`, editar con `tenant:update`):
+  - portal activado, antelación mínima y máxima, rejilla de horarios;
+  - confirmación automática y retención de las pendientes;
+  - qué puede hacer el cliente desde su enlace y con qué plazos;
+  - máximo de cambios, antiabuso, emails y recordatorio.
+  - Es una edición **parcial** (esquema base sin defaults, ADR-013). La pantalla solo envía lo que cambió.
+  - Auditada con antes y después. Aplica a la siguiente operación: motor, portal y worker leen la misma fila.
+- **Centro de comunicaciones** (`GET /notifications`, permiso `notifications:read`): qué se envió, a quién, para qué reserva, estado, intentos y error (sin direcciones).
+  - El detalle de cada reserva muestra sus mensajes.
+- **Reintento manual** (`POST /notifications/:id/retry`, permiso nuevo **`notifications:resend`**): solo para las `failed`, tras agotar los automáticos.
+  - **La API no envía:** deja la fila `queued` y un evento `notification.retry` en el outbox, en la misma transacción.
+  - El worker reintenta sobre la misma fila (misma `dedupe_key`): si entretanto se envió, no se repite.
+- **Permiso nuevo en empresas existentes:** los roles se copian al crear cada empresa, así que la migración 0011 otorga `notifications:resend` a los roles **de sistema** (propietario, administrador, gerente, recepción) de las empresas existentes. Los roles personalizados no se tocan.
+- **`VITE_PORTAL_URL`** (panel): base del enlace a la página pública del negocio.
+
 ## Fuera de alcance (Fase 5B y siguientes)
-- Centro de comunicaciones en el panel (historial, estado y reintento manual).
-- Pantalla de configuración (políticas, recordatorio, emails activados).
 - Avisos al negocio (nueva reserva pública).
 - Plantillas editables por empresa.
 - Baja con un clic desde el email.
