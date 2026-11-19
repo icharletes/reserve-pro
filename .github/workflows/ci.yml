@@ -35,7 +35,7 @@ jobs:
           --health-retries 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # BullMQ exige `noeviction` (con otra política Redis podría descartar jobs): no se puede pasar como
       # servicio, así que se arranca aparte.
@@ -99,7 +99,7 @@ jobs:
     # Informativa por ahora: una vulnerabilidad nueva de un tercero no debe bloquear todos los PR.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
