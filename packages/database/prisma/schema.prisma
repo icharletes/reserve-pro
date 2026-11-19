@@ -143,6 +143,7 @@ model tenant_memberships {
   updated_at       DateTime           @default(now()) @db.Timestamptz(6)
   invitations      invitations[]
   membership_roles membership_roles[]
+  resources        resources?
   tenants          tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users            users              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -184,9 +185,14 @@ model tenants {
   plan_id            String?              @db.Uuid
   created_at         DateTime             @default(now()) @db.Timestamptz(6)
   updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  holidays           holidays[]
   invitations        invitations[]
+  locations          locations[]
   refresh_tokens     refresh_tokens[]
+  resources          resources[]
   roles              roles[]
+  service_categories service_categories[]
+  services           services[]
   tenant_memberships tenant_memberships[]
   tenant_settings    tenant_settings?
 }
@@ -220,4 +226,208 @@ model email_verification_tokens {
   users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([user_id], map: "ix_email_verification_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model availability_blocks {
+  id          String    @id @db.Uuid
+  tenant_id   String    @db.Uuid
+  resource_id String    @db.Uuid
+  kind        String
+  start_at    DateTime  @db.Timestamptz(6)
+  end_at      DateTime  @db.Timestamptz(6)
+  reason      String?   @db.VarChar(200)
+  created_by  String?   @db.Uuid
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  resources   resources @relation(fields: [tenant_id, resource_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, id])
+  @@index([tenant_id, resource_id, start_at, end_at], map: "ix_blocks_resource_time")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model business_hours {
+  id           String    @id @db.Uuid
+  tenant_id    String    @db.Uuid
+  location_id  String    @db.Uuid
+  weekday      Int       @db.SmallInt
+  start_minute Int       @db.SmallInt
+  end_minute   Int       @db.SmallInt
+  locations    locations @relation(fields: [tenant_id, location_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id, location_id, weekday], map: "ix_business_hours_location")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model holidays {
+  tenant_id String   @db.Uuid
+  on_date   DateTime @db.Date
+  name      String   @db.VarChar(100)
+  tenants   tenants  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([tenant_id, on_date])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model locations {
+  id                 String               @id @db.Uuid
+  tenant_id          String               @db.Uuid
+  name               String               @db.Citext
+  address            Json                 @default("{}")
+  phone              String?              @db.VarChar(30)
+  email              String?              @db.Citext
+  timezone           String?              @db.VarChar(60)
+  is_active          Boolean              @default(true)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  business_hours     business_hours[]
+  tenants            tenants              @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  resources          resources[]
+  schedule_overrides schedule_overrides[]
+  service_locations  service_locations[]
+
+  @@unique([tenant_id, id])
+  @@unique([tenant_id, name])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model resource_schedules {
+  id           String    @id @db.Uuid
+  tenant_id    String    @db.Uuid
+  resource_id  String    @db.Uuid
+  weekday      Int       @db.SmallInt
+  start_minute Int       @db.SmallInt
+  end_minute   Int       @db.SmallInt
+  valid_from   DateTime? @db.Date
+  valid_to     DateTime? @db.Date
+  resources    resources @relation(fields: [tenant_id, resource_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id, resource_id, weekday], map: "ix_resource_schedules_resource")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model resources {
+  id                  String                @id @db.Uuid
+  tenant_id           String                @db.Uuid
+  location_id         String                @db.Uuid
+  kind                String
+  name                String                @db.Citext
+  capacity            Int                   @default(1)
+  membership_id       String?               @db.Uuid
+  is_bookable_online  Boolean               @default(true)
+  auto_assignable     Boolean               @default(true)
+  is_active           Boolean               @default(true)
+  sort_order          Int                   @default(0)
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  availability_blocks availability_blocks[]
+  resource_schedules  resource_schedules[]
+  tenants             tenants               @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  locations           locations             @relation(fields: [tenant_id, location_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  tenant_memberships  tenant_memberships?   @relation(fields: [tenant_id, membership_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  schedule_overrides  schedule_overrides[]
+  service_resources   service_resources[]
+
+  @@unique([tenant_id, id])
+  @@unique([tenant_id, location_id, name])
+  @@unique([tenant_id, membership_id], map: "uq_resources_membership", where: raw("(membership_id IS NOT NULL)"))
+  @@index([tenant_id, location_id, is_active], map: "ix_resources_location")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model schedule_overrides {
+  id           String     @id @db.Uuid
+  tenant_id    String     @db.Uuid
+  location_id  String?    @db.Uuid
+  resource_id  String?    @db.Uuid
+  on_date      DateTime   @db.Date
+  is_closed    Boolean    @default(false)
+  start_minute Int        @db.SmallInt
+  end_minute   Int        @db.SmallInt
+  reason       String?    @db.VarChar(200)
+  locations    locations? @relation(fields: [tenant_id, location_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  resources    resources? @relation(fields: [tenant_id, resource_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id, on_date], map: "ix_schedule_overrides_date")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model service_categories {
+  id         String     @id @db.Uuid
+  tenant_id  String     @db.Uuid
+  name       String     @db.Citext
+  sort_order Int        @default(0)
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at DateTime   @default(now()) @db.Timestamptz(6)
+  tenants    tenants    @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  services   services[]
+
+  @@unique([tenant_id, id])
+  @@unique([tenant_id, name])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model service_locations {
+  tenant_id   String    @db.Uuid
+  service_id  String    @db.Uuid
+  location_id String    @db.Uuid
+  locations   locations @relation(fields: [tenant_id, location_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  services    services  @relation(fields: [tenant_id, service_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([service_id, location_id])
+  @@index([tenant_id, location_id], map: "ix_service_locations_location")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model service_resources {
+  tenant_id        String    @db.Uuid
+  service_id       String    @db.Uuid
+  resource_id      String    @db.Uuid
+  requirement_slot Int       @default(1) @db.SmallInt
+  resources        resources @relation(fields: [tenant_id, resource_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  services         services  @relation(fields: [tenant_id, service_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([service_id, resource_id])
+  @@index([tenant_id, resource_id], map: "ix_service_resources_resource")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model services {
+  id                    String              @id @db.Uuid
+  tenant_id             String              @db.Uuid
+  category_id           String?             @db.Uuid
+  name                  String              @db.Citext
+  description           String?
+  duration_minutes      Int
+  buffer_before_minutes Int                 @default(0)
+  buffer_after_minutes  Int                 @default(0)
+  price                 Decimal             @db.Decimal(12, 2)
+  currency              String              @db.Char(3)
+  min_notice_minutes    Int?
+  max_advance_days      Int?
+  requires_confirmation Boolean?
+  image_url             String?             @db.VarChar(500)
+  is_active             Boolean             @default(true)
+  created_at            DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime            @default(now()) @db.Timestamptz(6)
+  service_locations     service_locations[]
+  service_resources     service_resources[]
+  service_categories    service_categories? @relation(fields: [tenant_id, category_id], references: [tenant_id, id], onDelete: NoAction, onUpdate: NoAction)
+  tenants               tenants             @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tenant_id, id])
+  @@unique([tenant_id, name])
+  @@index([tenant_id, is_active], map: "ix_services_tenant_active")
 }

@@ -292,6 +292,13 @@ CREATE TABLE invitations (
 
 ### 4.4 DDL — catálogo y agenda
 
+> **Actualización (Fase 2, ADR-013):** el DDL de abajo es el borrador inicial. La implementación real difiere en: horarios como
+> `start_minute`/`end_minute` (0–1440) en lugar de `time`; `weekday` ISO 1–7 (no 0–6); `name` como `citext` único por empresa;
+> restricciones `EXCLUDE` contra solapes; `holidays` como tabla propia; excepciones con `is_closed` + tramo 0–1440. La fuente
+> de verdad es `packages/database/prisma/migrations/`.
+
+
+
 ```sql
 CREATE TABLE locations (
   id uuid PRIMARY KEY, tenant_id uuid NOT NULL REFERENCES tenants(id),

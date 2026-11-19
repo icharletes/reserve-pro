@@ -39,6 +39,11 @@ export const useAuthStore = defineStore('auth', {
     activeMembership: (s) => s.memberships.find((m) => m.tenantId === s.activeTenantId) ?? null,
     /** Solo para MOSTRAR u ocultar acciones. La autorización real la aplica siempre el backend. */
     can: (s) => (permission: PermissionKey) => s.me?.permissions.includes(permission) ?? false,
+    /** Verdadero si tiene AL MENOS UNO de los permisos (p. ej. calendar:read o calendar:read:own). */
+    canAny:
+      (s) =>
+      (...permissions: PermissionKey[]) =>
+        permissions.some((p) => s.me?.permissions.includes(p) ?? false),
   },
 
   actions: {
