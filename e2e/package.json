@@ -8,7 +8,7 @@
     "test:e2e": "node --env-file-if-exists=../.env prepare.mjs && playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1",
+    "@playwright/test": "1.65.1",
     "@reservepro/database": "workspace:^",
     "dotenv": "^18.0.10",
     "pg": "^8.23.1"

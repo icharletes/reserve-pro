@@ -16,7 +16,7 @@
     "@astrojs/vue": "^7.1.6",
     "@reservepro/contracts": "workspace:^",
     "astro": "^7.4.13",
-    "vue": "^3.5.45"
+    "vue": "^3.5.46"
   },
   "devDependencies": {
     "@types/node": "22",
